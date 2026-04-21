@@ -25,6 +25,7 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(tasks[0]["title"], "Do something")
         self.assertEqual(tasks[0]["status"], "open")
         self.assertEqual(tasks[0]["id"], 1)
+        self.assertEqual(tasks[0]["priority"], "medium")
 
     def test_add_multiple_tasks(self):
         task_tracker.cmd_add("First task")
@@ -70,6 +71,42 @@ class TestTaskTracker(unittest.TestCase):
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_delete(99)
         mock_print.assert_called_with("Task #99 not found.")
+
+
+    def test_add_task_with_priority(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["priority"], "high")
+
+    def test_add_task_default_priority(self):
+        task_tracker.cmd_add("Normal task")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["priority"], "medium")
+
+    def test_list_sorted_by_priority(self):
+        task_tracker.cmd_add("Low task", priority="low")
+        task_tracker.cmd_add("High task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(sort_priority=True)
+        calls = [str(c) for c in mock_print.call_args_list]
+        high_idx = next(i for i, c in enumerate(calls) if "High task" in c)
+        low_idx = next(i for i, c in enumerate(calls) if "Low task" in c)
+        self.assertLess(high_idx, low_idx)
+
+    def test_list_shows_priority_tag(self):
+        task_tracker.cmd_add("Tagged task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("[high]", output)
+
+    def test_backward_compat_no_priority(self):
+        tasks = [{"id": 1, "title": "Old task", "status": "open"}]
+        task_tracker.save_tasks(tasks)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("[medium]", output)
 
 
 if __name__ == "__main__":

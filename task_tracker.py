@@ -22,23 +22,27 @@ def next_id(tasks):
     return max((t["id"] for t in tasks), default=0) + 1
 
 
-def cmd_add(title):
+def cmd_add(title, priority="medium"):
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open"}
+    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority}
     tasks.append(task)
     save_tasks(tasks)
-    print(f"Added task #{task['id']}: {title}")
+    print(f"Added task #{task['id']}: {title} [{priority}]")
 
 
-def cmd_list(status=None):
+def cmd_list(status=None, sort_priority=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
         print("No tasks found.")
         return
+    PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+    if sort_priority:
+        filtered.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
     for t in filtered:
         mark = "x" if t["status"] == "done" else " "
-        print(f"[{mark}] #{t['id']}: {t['title']}")
+        priority = t.get("priority", "medium")
+        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]")
 
 
 def cmd_done(task_id):
@@ -74,17 +78,27 @@ def main():
 
     if command == "add":
         if len(args) < 2:
-            print("Usage: task_tracker.py add <title>")
+            print("Usage: task_tracker.py add <title> [--priority low|medium|high]")
             sys.exit(1)
-        cmd_add(" ".join(args[1:]))
+        priority = "medium"
+        add_args = args[1:]
+        if "--priority" in add_args:
+            idx = add_args.index("--priority")
+            if idx + 1 < len(add_args):
+                priority = add_args[idx + 1]
+            title_parts = add_args[:idx]
+        else:
+            title_parts = add_args
+        cmd_add(" ".join(title_parts), priority)
 
     elif command == "list":
         status = None
+        sort_priority = "--priority" in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status)
+        cmd_list(status, sort_priority)
 
     elif command == "done":
         if len(args) < 2:
