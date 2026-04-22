@@ -10,12 +10,18 @@ TASKS_FILE = Path("tasks.json")
 
 
 def parse_flag(args, flag):
-    """Extract a flag value from args list. Returns (value_or_none, remaining_args)."""
+    """Extract a flag value from args list. Returns (value, remaining_args).
+
+    remaining_args excludes both the flag and its value.  If the flag is
+    absent, returns (None, args) unchanged.  If the flag is present but has
+    no following value, prints an error and exits with code 1.
+    """
     if flag not in args:
         return None, args
     idx = args.index(flag)
     if idx + 1 >= len(args):
-        return None, args
+        print(f"Error: {flag} requires a value.", file=sys.stderr)
+        sys.exit(1)
     value = args[idx + 1]
     remaining = args[:idx] + args[idx + 2:]
     return value, remaining
@@ -36,12 +42,21 @@ def next_id(tasks):
 
 
 def cmd_add(title, priority="medium", due_date=None):
+    """Add a new task.
+
+    Args:
+        title: Task description string.
+        priority: "low", "medium" (default), or "high".
+        due_date: Date string "YYYY-MM-DD" or None. Stored as explicit null
+                  in tasks.json when None. Invalid format prints an error
+                  and exits with code 1.
+    """
     if due_date is not None:
         try:
-            datetime.date.fromisoformat(due_date)
+            datetime.datetime.strptime(due_date, "%Y-%m-%d")
         except ValueError:
-            print("Invalid due-date format. Use YYYY-MM-DD.")
-            return
+            print("Invalid due-date format. Use YYYY-MM-DD.", file=sys.stderr)
+            sys.exit(1)
     tasks = load_tasks()
     task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
     tasks.append(task)
@@ -60,6 +75,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
     if sort_priority:
         filtered.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
     if sort_due:
+        # Sort by date ascending; tasks with no due_date sort last.
+        # Tuple key: (is_undated, date_str) — True > False pushes undated to end.
         filtered.sort(key=lambda t: (t.get("due_date") is None, t.get("due_date") or ""))
     for t in filtered:
         mark = "x" if t["status"] == "done" else " "

@@ -109,9 +109,12 @@ class TestTaskTracker(unittest.TestCase):
         self.assertIn("[medium]", output)
 
     def test_add_task_with_due_date(self):
-        task_tracker.cmd_add("Dated task", due_date="2026-05-01")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Dated task", due_date="2026-05-01")
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks[0]["due_date"], "2026-05-01")
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("(due: 2026-05-01)", output)
 
     def test_add_task_default_due_date(self):
         task_tracker.cmd_add("No date task")
@@ -154,8 +157,10 @@ class TestTaskTracker(unittest.TestCase):
 
     def test_add_invalid_due_date(self):
         with patch("builtins.print") as mock_print:
-            task_tracker.cmd_add("Bad date task", due_date="not-a-date")
-        mock_print.assert_called_with("Invalid due-date format. Use YYYY-MM-DD.")
+            with self.assertRaises(SystemExit) as cm:
+                task_tracker.cmd_add("Bad date task", due_date="not-a-date")
+        self.assertEqual(cm.exception.code, 1)
+        mock_print.assert_called_with("Invalid due-date format. Use YYYY-MM-DD.", file=sys.stderr)
         tasks = task_tracker.load_tasks()
         self.assertEqual(len(tasks), 0)
 
@@ -166,6 +171,22 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
+
+    def test_parse_flag_absent(self):
+        value, remaining = task_tracker.parse_flag(["foo", "bar"], "--flag")
+        self.assertIsNone(value)
+        self.assertEqual(remaining, ["foo", "bar"])
+
+    def test_parse_flag_with_value(self):
+        value, remaining = task_tracker.parse_flag(["foo", "--flag", "val", "bar"], "--flag")
+        self.assertEqual(value, "val")
+        self.assertEqual(remaining, ["foo", "bar"])
+
+    def test_parse_flag_at_end_no_value(self):
+        with patch("builtins.print"):
+            with self.assertRaises(SystemExit) as cm:
+                task_tracker.parse_flag(["foo", "--flag"], "--flag")
+        self.assertEqual(cm.exception.code, 1)
 
 
 if __name__ == "__main__":
