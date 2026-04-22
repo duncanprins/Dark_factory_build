@@ -168,5 +168,80 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+class TestPublish(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+        html_file = Path("tasks.html")
+        if html_file.exists():
+            html_file.unlink()
+
+    def test_publish_creates_html_file(self):
+        task_tracker.cmd_add("Test task", priority="high")
+        task_tracker.cmd_publish()
+        self.assertTrue(Path("tasks.html").exists())
+
+    def test_publish_prints_count(self):
+        task_tracker.cmd_add("Task one")
+        task_tracker.cmd_add("Task two")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_publish()
+        mock_print.assert_called_with("Published 2 tasks to tasks.html")
+
+    def test_publish_empty_tasks(self):
+        task_tracker.cmd_publish()
+        content = Path("tasks.html").read_text()
+        self.assertIn("No open tasks.", content)
+        self.assertIn("<!DOCTYPE html>", content)
+
+    def test_publish_only_open_tasks(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_publish()
+        mock_print.assert_called_with("Published 1 task to tasks.html")
+        content = Path("tasks.html").read_text()
+        self.assertIn("Open task", content)
+        self.assertNotIn("Done task", content)
+
+    def test_publish_sorted_by_priority(self):
+        task_tracker.cmd_add("Low task", priority="low")
+        task_tracker.cmd_add("High task", priority="high")
+        task_tracker.cmd_add("Medium task", priority="medium")
+        task_tracker.cmd_publish()
+        content = Path("tasks.html").read_text()
+        high_pos = content.index("High task")
+        medium_pos = content.index("Medium task")
+        low_pos = content.index("Low task")
+        self.assertLess(high_pos, medium_pos)
+        self.assertLess(medium_pos, low_pos)
+
+    def test_publish_includes_due_date(self):
+        tasks = [{"id": 1, "title": "Dated task", "status": "open", "priority": "high", "due_date": "2026-05-01"}]
+        task_tracker.save_tasks(tasks)
+        task_tracker.cmd_publish()
+        content = Path("tasks.html").read_text()
+        self.assertIn("2026-05-01", content)
+
+    def test_publish_no_due_date_shows_dash(self):
+        task_tracker.cmd_add("No date task")
+        task_tracker.cmd_publish()
+        content = Path("tasks.html").read_text()
+        self.assertIn("\u2014", content)
+
+    def test_publish_overwrites_existing(self):
+        Path("tasks.html").write_text("old content")
+        task_tracker.cmd_publish()
+        content = Path("tasks.html").read_text()
+        self.assertNotIn("old content", content)
+        self.assertIn("<!DOCTYPE html>", content)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,11 +2,13 @@
 """Task Tracker CLI — minimal task management via JSON storage."""
 
 import datetime
+import html
 import json
 import sys
 from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
+PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 def parse_flag(args, flag):
@@ -56,7 +58,6 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
     if not filtered:
         print("No tasks found.")
         return
-    PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
     if sort_priority:
         filtered.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
     if sort_due:
@@ -91,11 +92,56 @@ def cmd_delete(task_id):
     print(f"Deleted task #{task_id}.")
 
 
+def cmd_publish():
+    tasks = load_tasks()
+    open_tasks = [t for t in tasks if t.get("status") == "open"]
+    open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
+
+    if open_tasks:
+        rows = ""
+        for t in open_tasks:
+            priority = t.get("priority", "medium")
+            due_date = html.escape(t.get("due_date") or "\u2014")
+            rows += (
+                f'<tr><td>{t["id"]}</td>'
+                f"<td>{html.escape(t['title'])}</td>"
+                f'<td class="{priority}">{priority}</td>'
+                f"<td>{due_date}</td></tr>\n"
+            )
+        body_content = (
+            "<table>\n<thead><tr>"
+            "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
+            "</tr></thead>\n<tbody>\n" + rows + "</tbody>\n</table>"
+        )
+    else:
+        body_content = "<p>No open tasks.</p>"
+
+    page = (
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        '<meta charset="UTF-8">\n<title>Open Tasks</title>\n<style>\n'
+        "body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; }\n"
+        "table { border-collapse: collapse; width: 100%; }\n"
+        "th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }\n"
+        "th { background: #f5f5f5; }\n"
+        ".high { color: #c0392b; font-weight: bold; }\n"
+        ".medium { color: #e67e22; }\n"
+        ".low { color: #27ae60; }\n"
+        "</style>\n</head>\n<body>\n"
+        f"<h1>Open Tasks</h1>\n{body_content}\n"
+        "</body>\n</html>\n"
+    )
+
+    Path("tasks.html").write_text(page)
+    count = len(open_tasks)
+    noun = "task" if count == 1 else "tasks"
+    print(f"Published {count} {noun} to tasks.html")
+
+
 def main():
     args = sys.argv[1:]
     if not args:
         print("Usage: task_tracker.py <command> [args]")
-        print("Commands: add, list, done, delete")
+        print("Commands: add, list, done, delete, publish")
         sys.exit(1)
 
     command = args[0]
@@ -133,6 +179,9 @@ def main():
             print("Usage: task_tracker.py delete <id>")
             sys.exit(1)
         cmd_delete(int(args[1]))
+
+    elif command == "publish":
+        cmd_publish()
 
     else:
         print(f"Unknown command: {command}")
