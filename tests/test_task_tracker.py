@@ -108,6 +108,65 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("[medium]", output)
 
+    def test_add_task_with_due_date(self):
+        task_tracker.cmd_add("Dated task", due_date="2026-05-01")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["due_date"], "2026-05-01")
+
+    def test_add_task_default_due_date(self):
+        task_tracker.cmd_add("No date task")
+        tasks = task_tracker.load_tasks()
+        self.assertIsNone(tasks[0].get("due_date"))
+
+    def test_list_shows_due_date(self):
+        task_tracker.cmd_add("Dated task", due_date="2026-05-01")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("(due: 2026-05-01)", output)
+
+    def test_list_no_due_date_omitted(self):
+        task_tracker.cmd_add("Plain task")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("(due:", output)
+
+    def test_list_sorted_by_due_date(self):
+        task_tracker.cmd_add("Later task", due_date="2026-06-01")
+        task_tracker.cmd_add("Earlier task", due_date="2026-04-25")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(sort_due=True)
+        calls = [str(c) for c in mock_print.call_args_list]
+        earlier_idx = next(i for i, c in enumerate(calls) if "Earlier task" in c)
+        later_idx = next(i for i, c in enumerate(calls) if "Later task" in c)
+        self.assertLess(earlier_idx, later_idx)
+
+    def test_list_sort_due_date_none_last(self):
+        task_tracker.cmd_add("No date task")
+        task_tracker.cmd_add("Dated task", due_date="2026-04-25")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(sort_due=True)
+        calls = [str(c) for c in mock_print.call_args_list]
+        dated_idx = next(i for i, c in enumerate(calls) if "Dated task" in c)
+        undated_idx = next(i for i, c in enumerate(calls) if "No date task" in c)
+        self.assertLess(dated_idx, undated_idx)
+
+    def test_add_invalid_due_date(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Bad date task", due_date="not-a-date")
+        mock_print.assert_called_with("Invalid due-date format. Use YYYY-MM-DD.")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 0)
+
+    def test_backward_compat_no_due_date(self):
+        tasks = [{"id": 1, "title": "Old task", "status": "open", "priority": "medium"}]
+        task_tracker.save_tasks(tasks)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("(due:", output)
+
 
 if __name__ == "__main__":
     unittest.main()

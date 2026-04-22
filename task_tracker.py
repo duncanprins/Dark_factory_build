@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 """Task Tracker CLI — minimal task management via JSON storage."""
 
+import datetime
 import json
 import sys
 from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
+
+
+def parse_flag(args, flag):
+    """Extract a flag value from args list. Returns (value_or_none, remaining_args)."""
+    if flag not in args:
+        return None, args
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        return None, args
+    value = args[idx + 1]
+    remaining = args[:idx] + args[idx + 2:]
+    return value, remaining
 
 
 def load_tasks():
@@ -22,15 +35,22 @@ def next_id(tasks):
     return max((t["id"] for t in tasks), default=0) + 1
 
 
-def cmd_add(title, priority="medium"):
+def cmd_add(title, priority="medium", due_date=None):
+    if due_date is not None:
+        try:
+            datetime.date.fromisoformat(due_date)
+        except ValueError:
+            print("Invalid due-date format. Use YYYY-MM-DD.")
+            return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority}
+    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
     tasks.append(task)
     save_tasks(tasks)
-    print(f"Added task #{task['id']}: {title} [{priority}]")
+    due_str = f" (due: {due_date})" if due_date else ""
+    print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -39,10 +59,14 @@ def cmd_list(status=None, sort_priority=False):
     PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
     if sort_priority:
         filtered.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
+    if sort_due:
+        filtered.sort(key=lambda t: (t.get("due_date") is None, t.get("due_date") or ""))
     for t in filtered:
         mark = "x" if t["status"] == "done" else " "
         priority = t.get("priority", "medium")
-        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]")
+        due_date = t.get("due_date")
+        due_str = f" (due: {due_date})" if due_date else ""
+        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
 
 
 def cmd_done(task_id):
@@ -78,27 +102,25 @@ def main():
 
     if command == "add":
         if len(args) < 2:
-            print("Usage: task_tracker.py add <title> [--priority low|medium|high]")
+            print("Usage: task_tracker.py add <title> [--priority low|medium|high] [--due-date YYYY-MM-DD]")
             sys.exit(1)
-        priority = "medium"
         add_args = args[1:]
-        if "--priority" in add_args:
-            idx = add_args.index("--priority")
-            if idx + 1 < len(add_args):
-                priority = add_args[idx + 1]
-            title_parts = add_args[:idx]
-        else:
-            title_parts = add_args
-        cmd_add(" ".join(title_parts), priority)
+        priority, add_args = parse_flag(add_args, "--priority")
+        if priority is None:
+            priority = "medium"
+        due_date, add_args = parse_flag(add_args, "--due-date")
+        title = " ".join(add_args)
+        cmd_add(title, priority, due_date)
 
     elif command == "list":
         status = None
         sort_priority = "--priority" in args
+        sort_due = "--sort-due" in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority)
+        cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
         if len(args) < 2:
