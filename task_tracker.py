@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
+PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 def parse_flag(args, flag):
@@ -57,7 +58,6 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
     if not filtered:
         print("No tasks found.")
         return
-    PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
     if sort_priority:
         filtered.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
     if sort_due:
@@ -95,14 +95,13 @@ def cmd_delete(task_id):
 def cmd_publish():
     tasks = load_tasks()
     open_tasks = [t for t in tasks if t.get("status") == "open"]
-    PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
         rows = ""
         for t in open_tasks:
             priority = t.get("priority", "medium")
-            due_date = t.get("due_date") or "\u2014"
+            due_date = html.escape(t.get("due_date") or "\u2014")
             rows += (
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
@@ -133,7 +132,9 @@ def cmd_publish():
     )
 
     Path("tasks.html").write_text(page)
-    print(f"Published {len(open_tasks)} tasks to tasks.html")
+    count = len(open_tasks)
+    noun = "task" if count == 1 else "tasks"
+    print(f"Published {count} {noun} to tasks.html")
 
 
 def main():

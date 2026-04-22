@@ -205,7 +205,7 @@ class TestPublish(unittest.TestCase):
         task_tracker.cmd_done(2)
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_publish()
-        mock_print.assert_called_with("Published 1 tasks to tasks.html")
+        mock_print.assert_called_with("Published 1 task to tasks.html")
         content = Path("tasks.html").read_text()
         self.assertIn("Open task", content)
         self.assertNotIn("Done task", content)
