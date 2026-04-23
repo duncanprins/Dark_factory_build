@@ -13,11 +13,28 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 
 ```bash
 python task_tracker.py add "Write tests for task listing"
+python task_tracker.py add "Fix bug" --priority high --due-date 2026-05-01
 python task_tracker.py list
 python task_tracker.py list --status open
+python task_tracker.py list --priority
+python task_tracker.py list --sort-due
+python task_tracker.py list --color
 python task_tracker.py done 1
 python task_tracker.py delete 1
+python task_tracker.py publish
 ```
+
+### Flags
+
+| Command | Flag | Description |
+|---------|------|-------------|
+| `add` | `--priority high\|medium\|low` | Set task priority (default: medium) |
+| `add` | `--due-date YYYY-MM-DD` | Set task due date |
+| `list` | `--status open\|done` | Filter by status |
+| `list` | `--priority` | Sort by priority (high first) |
+| `list` | `--sort-due` | Sort by due date (earliest first, no-date last) |
+| `list` | `--color` | Colorize priority tags (red/yellow/green) |
+| `list` | `--no-color` | No-op; disables color for script compatibility |
 
 ## Development
 

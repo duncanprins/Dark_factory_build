@@ -183,6 +183,7 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[33m", output)
         self.assertIn("[medium]", output)
+        self.assertIn("\033[0m", output)
 
     def test_list_color_low_contains_ansi(self):
         task_tracker.cmd_add("Minor task", priority="low")
@@ -191,6 +192,7 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[32m", output)
         self.assertIn("[low]", output)
+        self.assertIn("\033[0m", output)
 
     def test_list_no_color_flag_no_ansi(self):
         task_tracker.cmd_add("Task", priority="high")
@@ -203,6 +205,23 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_add("Task", priority="high")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_main_color_flag_passes_ansi_to_output(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print, \
+             patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_list_no_color_flag_is_noop(self):
+        task_tracker.cmd_add("Task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--no-color"]), \
+             patch("builtins.print") as mock_print:
+            task_tracker.main()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
 
