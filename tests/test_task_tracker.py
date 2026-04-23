@@ -156,13 +156,13 @@ class TestTaskTracker(unittest.TestCase):
         args = ["My Task", "--priority"]
         priority, remaining = task_tracker.parse_flag(args, "--priority")
         self.assertIsNone(priority)
-        self.assertNotIn("--priority", remaining)
         self.assertEqual(remaining, ["My Task"])
 
     def test_add_via_main_flag_without_value_not_in_title(self):
         with patch("sys.argv", ["task_tracker.py", "add", "Buy groceries", "--priority"]):
             task_tracker.main()
         tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["title"], "Buy groceries")
         self.assertEqual(tasks[0]["priority"], "medium")
 
