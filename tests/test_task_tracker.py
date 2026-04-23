@@ -291,6 +291,28 @@ class TestColor(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("[high]", output)
 
+    def test_color_backward_compat_no_priority_key(self):
+        tasks = [{"id": 1, "title": "Old task", "status": "open"}]
+        task_tracker.save_tasks(tasks)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m", output)   # medium → yellow
+        self.assertIn("[medium]", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_flag_wires_through_main(self):
+        task_tracker.cmd_add("Urgent", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+    def test_colorize_wraps_with_code_and_reset(self):
+        result = task_tracker.colorize("[high]", "\033[31m")
+        self.assertEqual(result, "\033[31m[high]\033[0m")
+
 
 if __name__ == "__main__":
     unittest.main()
