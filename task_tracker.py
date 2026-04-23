@@ -117,7 +117,7 @@ def cmd_publish():
         body_content = "<p>No open tasks.</p>"
 
     page = (
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
         '<meta charset="UTF-8">\n<title>Open Tasks</title>\n<style>\n'
         "body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; }\n"
         "table { border-collapse: collapse; width: 100%; }\n"
@@ -152,8 +152,7 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
+        priority = priority or "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
         cmd_add(title, priority, due_date)
