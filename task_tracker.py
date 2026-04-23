@@ -98,16 +98,13 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
-        for t in open_tasks:
-            priority = t.get("priority", "medium")
-            due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
-                f'<tr><td>{t["id"]}</td>'
-                f"<td>{html.escape(t['title'])}</td>"
-                f'<td class="{priority}">{priority}</td>'
-                f"<td>{due_date}</td></tr>\n"
-            )
+        rows = "".join(
+            f'<tr><td>{t["id"]}</td>'
+            f"<td>{html.escape(t['title'])}</td>"
+            f'<td class="{t.get("priority", "medium")}">{t.get("priority", "medium")}</td>'
+            f"<td>{html.escape(t.get('due_date') or '\u2014')}</td></tr>\n"
+            for t in open_tasks
+        )
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
@@ -159,15 +156,11 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
-        if "--done" in args:
+        status, _ = parse_flag(args[1:], "--status")
+        if status is None and "--done" in args:
             status = "done"
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
