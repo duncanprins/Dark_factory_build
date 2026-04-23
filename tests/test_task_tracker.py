@@ -167,6 +167,27 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_list_empty_file(self):
+        """tasks.json exists but is empty — should print 'No tasks found.' not crash."""
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_list_null_json(self):
+        """tasks.json contains null — should print 'No tasks found.' not crash."""
+        task_tracker.TASKS_FILE.write_text("null")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_list_invalid_json(self):
+        """tasks.json contains invalid JSON — should print 'No tasks found.' not crash."""
+        task_tracker.TASKS_FILE.write_text("{not valid json}")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
