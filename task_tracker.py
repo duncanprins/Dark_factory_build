@@ -160,21 +160,16 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
+        priority = priority or "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
         color = "--color" in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+        status, _ = parse_flag(args, "--status")
         cmd_list(status, sort_priority, sort_due, color)
 
     elif command == "done":
