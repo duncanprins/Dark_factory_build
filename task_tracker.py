@@ -32,12 +32,20 @@ def load_tasks():
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
+        print("Warning: tasks.json is corrupt and could not be read. Starting with empty list.", file=sys.stderr)
         return []
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        print("Warning: tasks.json contains unexpected data type. Starting with empty list.", file=sys.stderr)
+        return []
+    return data
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    try:
+        TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    except OSError as e:
+        print(f"Error: could not write tasks file: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def next_id(tasks):
