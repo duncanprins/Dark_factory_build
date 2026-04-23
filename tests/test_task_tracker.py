@@ -71,6 +71,24 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Done task", output)
 
+    def test_done_flag_overridden_by_status(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--done", "--status", "open"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        # --status open takes precedence over --done
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Open task", output)
+
+    def test_done_flag_no_done_tasks(self):
+        task_tracker.cmd_add("Open task only")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        mock_print.assert_called_once_with("No tasks found.")
+
     def test_done(self):
         task_tracker.cmd_add("Complete me")
         task_tracker.cmd_done(1)
