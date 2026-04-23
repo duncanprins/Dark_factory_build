@@ -8,6 +8,7 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 - Add, list, complete, and delete tasks
 - Persist tasks to a local JSON file
 - Filter tasks by status
+- Color-coded priority output for task listing
 
 ## Usage
 
@@ -15,6 +16,8 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 python task_tracker.py add "Write tests for task listing"
 python task_tracker.py list
 python task_tracker.py list --status open
+python task_tracker.py list --color
+python task_tracker.py list --color --no-color   # explicit disable takes precedence
 python task_tracker.py done 1
 python task_tracker.py delete 1
 ```

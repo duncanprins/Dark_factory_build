@@ -9,6 +9,7 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+# ANSI escape codes: red=high, yellow=medium, green=low, reset clears formatting
 ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m", "reset": "\033[0m"}
 
 
@@ -25,6 +26,7 @@ def parse_flag(args, flag):
 
 
 def colorize_priority(priority, use_color):
+    """Wrap priority string in ANSI color codes. Returns plain string if use_color is False or priority is unrecognized."""
     if not use_color:
         return priority
     color = ANSI_COLORS.get(priority, "")
@@ -172,7 +174,7 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
-        use_color = "--color" in args and "--no-color" not in args
+        use_color = "--color" in args and "--no-color" not in args  # --no-color takes precedence
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):

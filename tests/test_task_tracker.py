@@ -202,12 +202,42 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
 
-    def test_list_no_color_flag_disables_color(self):
+    def test_list_no_color_overrides_color_flag(self):
+        """--no-color takes precedence over --color when both are passed via main()."""
         task_tracker.cmd_add("Task", priority="high")
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list(use_color=False)
-        output = mock_print.call_args_list[0][0][0]
-        self.assertNotIn("\033[", output)
+        with patch("sys.argv", ["task_tracker.py", "list", "--color", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        task_output = next(o for o in outputs if "Task" in o)
+        self.assertNotIn("\033[", task_output)
+
+    def test_list_color_flag_via_main(self):
+        """--color flag enables color output via main() dispatch."""
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        task_output = next(o for o in outputs if "Urgent task" in o)
+        self.assertIn("\033[31m", task_output)
+        self.assertIn("\033[0m", task_output)
+
+    def test_main_list_no_color_flag(self):
+        """--no-color flag disables color output via main() dispatch."""
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        task_output = next(o for o in outputs if "Urgent task" in o)
+        self.assertNotIn("\033[", task_output)
+
+    def test_colorize_priority_unknown_no_escape_codes(self):
+        """Unknown priority values produce no ANSI escape codes."""
+        result = task_tracker.colorize_priority("critical", use_color=True)
+        self.assertEqual(result, "critical")
+        self.assertNotIn("\033[", result)
 
 
 class TestPublish(unittest.TestCase):
