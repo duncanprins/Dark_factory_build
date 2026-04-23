@@ -192,6 +192,12 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
 
+    def test_list_whitespace_only_file(self):
+        task_tracker.TASKS_FILE.write_text("   \n   ")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
