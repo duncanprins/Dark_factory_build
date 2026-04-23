@@ -172,25 +172,70 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.TASKS_FILE.write_text("")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list()
-        mock_print.assert_called_with("No tasks found.")
+        mock_print.assert_called_once_with("No tasks found.")
 
     def test_list_null_json(self):
         task_tracker.TASKS_FILE.write_text("null")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list()
-        mock_print.assert_called_with("No tasks found.")
+        mock_print.assert_called_once_with("No tasks found.")
 
     def test_list_invalid_json(self):
         task_tracker.TASKS_FILE.write_text("{not valid json}")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list()
-        mock_print.assert_called_with("No tasks found.")
+        mock_print.assert_called_once_with("No tasks found.")
 
     def test_list_dict_json(self):
         task_tracker.TASKS_FILE.write_text('{"key": "value"}')
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list()
-        mock_print.assert_called_with("No tasks found.")
+        mock_print.assert_called_once_with("No tasks found.")
+
+
+class TestLoadTasks(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_returns_empty_list_when_file_missing(self):
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_returns_empty_list_for_empty_file(self):
+        task_tracker.TASKS_FILE.write_text("")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_returns_empty_list_for_null_json(self):
+        task_tracker.TASKS_FILE.write_text("null")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_returns_empty_list_for_invalid_json(self):
+        task_tracker.TASKS_FILE.write_text("{not valid json}")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_returns_empty_list_for_dict_json(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_returns_tasks_for_valid_list_json(self):
+        tasks = [{"id": 1, "title": "Test", "status": "open", "priority": "medium"}]
+        task_tracker.TASKS_FILE.write_text(json.dumps(tasks))
+        self.assertEqual(task_tracker.load_tasks(), tasks)
+
+    def test_returns_empty_list_on_permission_error(self):
+        task_tracker.TASKS_FILE.write_text("[]")
+        import os
+        os.chmod(task_tracker.TASKS_FILE, 0o000)
+        try:
+            result = task_tracker.load_tasks()
+        finally:
+            os.chmod(task_tracker.TASKS_FILE, 0o644)
+        self.assertEqual(result, [])
 
 
 class TestPublish(unittest.TestCase):

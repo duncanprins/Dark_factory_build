@@ -26,7 +26,11 @@ def parse_flag(args, flag):
 def load_tasks():
     if not TASKS_FILE.exists():
         return []
-    text = TASKS_FILE.read_text().strip()
+    try:
+        text = TASKS_FILE.read_text().strip()
+    except (OSError, PermissionError):
+        print(f"Error: cannot read {TASKS_FILE}.", file=sys.stderr)
+        return []
     if not text:
         return []
     try:
