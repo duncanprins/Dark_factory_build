@@ -166,6 +166,8 @@ def main():
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
+        if "--done" in args:
+            status = "done"
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
