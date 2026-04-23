@@ -72,7 +72,6 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_delete(99)
         mock_print.assert_called_with("Task #99 not found.")
 
-
     def test_add_task_with_priority(self):
         task_tracker.cmd_add("Urgent task", priority="high")
         tasks = task_tracker.load_tasks()
@@ -166,7 +165,6 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
-
 
     def test_list_empty_file(self):
         task_tracker.TASKS_FILE.write_text("")
