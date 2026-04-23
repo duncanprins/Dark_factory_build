@@ -32,7 +32,11 @@ def load_tasks():
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
+        # NOTE: corrupt file silently returns []; a subsequent write will overwrite it.
+        # Consider warning the user (print to stderr) in a follow-up improvement.
         return []
+    # NOTE: non-list JSON (e.g. null, {}, numbers) also silently returns [];
+    # same silent-overwrite risk applies on a subsequent write command.
     return data if isinstance(data, list) else []
 
 
