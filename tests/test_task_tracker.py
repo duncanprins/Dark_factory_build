@@ -152,6 +152,20 @@ class TestTaskTracker(unittest.TestCase):
         undated_idx = next(i for i, c in enumerate(calls) if "No date task" in c)
         self.assertLess(dated_idx, undated_idx)
 
+    def test_parse_flag_without_value_not_leaked_into_title(self):
+        args = ["My Task", "--priority"]
+        priority, remaining = task_tracker.parse_flag(args, "--priority")
+        self.assertIsNone(priority)
+        self.assertNotIn("--priority", remaining)
+        self.assertEqual(remaining, ["My Task"])
+
+    def test_add_via_main_flag_without_value_not_in_title(self):
+        with patch("sys.argv", ["task_tracker.py", "add", "Buy groceries", "--priority"]):
+            task_tracker.main()
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["title"], "Buy groceries")
+        self.assertEqual(tasks[0]["priority"], "medium")
+
     def test_add_invalid_due_date(self):
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_add("Bad date task", due_date="not-a-date")

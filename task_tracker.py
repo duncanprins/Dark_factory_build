@@ -17,7 +17,7 @@ def parse_flag(args, flag):
         return None, args
     idx = args.index(flag)
     if idx + 1 >= len(args):
-        return None, args
+        return None, args[:idx]
     value = args[idx + 1]
     remaining = args[:idx] + args[idx + 2:]
     return value, remaining
