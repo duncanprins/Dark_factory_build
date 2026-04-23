@@ -66,8 +66,32 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_done(2)
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list(status="done")
+        self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("Open task", output)
+
+    def test_main_list_done_flag(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print, \
+             patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            task_tracker.main()
+        output_lines = [call[0][0] for call in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in line for line in output_lines))
+        self.assertFalse(any("Open task" in line for line in output_lines))
+
+    def test_main_done_flag_takes_precedence_over_status(self):
+        """--done should win when both --done and --status are provided."""
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print, \
+             patch("sys.argv", ["task_tracker.py", "list", "--done", "--status", "open"]):
+            task_tracker.main()
+        output_lines = [call[0][0] for call in mock_print.call_args_list]
+        self.assertFalse(any("Open task" in line for line in output_lines))
+        self.assertTrue(any("Done task" in line for line in output_lines))
 
     def test_list_done_flag_no_done_tasks(self):
         task_tracker.cmd_add("Open task")
