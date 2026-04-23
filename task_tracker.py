@@ -9,6 +9,7 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m", "reset": "\033[0m"}
 
 
 def parse_flag(args, flag):
@@ -21,6 +22,14 @@ def parse_flag(args, flag):
     value = args[idx + 1]
     remaining = args[:idx] + args[idx + 2:]
     return value, remaining
+
+
+def colorize_priority(priority, use_color):
+    if not use_color:
+        return priority
+    color = ANSI_COLORS.get(priority, "")
+    reset = ANSI_COLORS["reset"] if color else ""
+    return f"{color}{priority}{reset}"
 
 
 def load_tasks():
@@ -52,7 +61,7 @@ def cmd_add(title, priority="medium", due_date=None):
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False, sort_due=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False, use_color=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -67,7 +76,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
+        priority_str = colorize_priority(priority, use_color)
+        print(f"[{mark}] #{t['id']}: {t['title']} [{priority_str}]{due_str}")
 
 
 def cmd_done(task_id):
@@ -162,11 +172,12 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        use_color = "--color" in args and "--no-color" not in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority, sort_due)
+        cmd_list(status, sort_priority, sort_due, use_color)
 
     elif command == "done":
         if len(args) < 2:
