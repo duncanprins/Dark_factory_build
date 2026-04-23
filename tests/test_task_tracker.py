@@ -243,5 +243,54 @@ class TestPublish(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", content)
 
 
+class TestColor(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_color_high_contains_red_ansi(self):
+        task_tracker.cmd_add("Urgent", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_medium_contains_yellow_ansi(self):
+        task_tracker.cmd_add("Normal", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_low_contains_green_ansi(self):
+        task_tracker.cmd_add("Minor", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_no_color_no_ansi_codes(self):
+        task_tracker.cmd_add("Task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_color_still_shows_priority_label(self):
+        task_tracker.cmd_add("Task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("[high]", output)
+
+
 if __name__ == "__main__":
     unittest.main()
