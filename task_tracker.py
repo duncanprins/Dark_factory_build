@@ -98,16 +98,13 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
-        for t in open_tasks:
-            priority = t.get("priority", "medium")
-            due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
-                f'<tr><td>{t["id"]}</td>'
-                f"<td>{html.escape(t['title'])}</td>"
-                f'<td class="{priority}">{priority}</td>'
-                f"<td>{due_date}</td></tr>\n"
-            )
+        rows = "".join(
+            f'<tr><td>{t["id"]}</td>'
+            f"<td>{html.escape(t['title'])}</td>"
+            f'<td class="{t.get("priority", "medium")}">{t.get("priority", "medium")}</td>'
+            f"<td>{html.escape(t.get('due_date') or '\u2014')}</td></tr>\n"
+            for t in open_tasks
+        )
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
@@ -152,8 +149,7 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
+        priority = priority or "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
         cmd_add(title, priority, due_date)
