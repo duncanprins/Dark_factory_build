@@ -7,14 +7,19 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 
 - Add, list, complete, and delete tasks
 - Persist tasks to a local JSON file
-- Filter tasks by status
+- Filter tasks by status (`--status open|done`)
+- Sort tasks by priority (`--priority`) or due date (`--sort-due`)
+- Colorized priority output (`--color`)
 
 ## Usage
 
 ```bash
-python task_tracker.py add "Write tests for task listing"
+python task_tracker.py add "Write tests" --priority high --due-date 2026-05-01
 python task_tracker.py list
 python task_tracker.py list --status open
+python task_tracker.py list --priority
+python task_tracker.py list --sort-due
+python task_tracker.py list --color
 python task_tracker.py done 1
 python task_tracker.py delete 1
 ```

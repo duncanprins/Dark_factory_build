@@ -9,7 +9,8 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
-ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m", "reset": "\033[0m"}
+ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m"}
+ANSI_RESET = "\033[0m"
 
 
 def parse_flag(args, flag):
@@ -70,7 +71,7 @@ def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
         due_str = f" (due: {due_date})" if due_date else ""
         if color:
             col = ANSI_COLORS.get(priority, "")
-            reset = ANSI_COLORS["reset"]
+            reset = ANSI_RESET if col else ""
             priority_tag = f"{col}[{priority}]{reset}"
         else:
             priority_tag = f"[{priority}]"

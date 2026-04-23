@@ -201,6 +201,18 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
 
+    def test_list_color_unknown_priority_no_ansi_opener(self):
+        tasks = [{"id": 1, "title": "Odd task", "status": "open", "priority": "critical"}]
+        task_tracker.save_tasks(tasks)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[31m", output)
+        self.assertNotIn("\033[33m", output)
+        self.assertNotIn("\033[32m", output)
+        self.assertNotIn("\033[0m", output)
+        self.assertIn("[critical]", output)
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
