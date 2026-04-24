@@ -167,6 +167,29 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_colorize_wraps_text(self):
+        result = task_tracker.colorize("hello", "\033[31m")
+        self.assertEqual(result, "\033[31m" + "hello" + "\033[0m")
+
+    def test_colorize_noop_when_code_none(self):
+        self.assertEqual(task_tracker.colorize("hello", None), "hello")
+
+    def test_list_color_flag_emits_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_main_no_color_overrides_color(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
