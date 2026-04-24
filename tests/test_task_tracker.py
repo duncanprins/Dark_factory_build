@@ -190,6 +190,23 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_delete(1)
         mock_print.assert_called_with("Task #1 not found.")
 
+    def test_load_tasks_whitespace_only_file(self):
+        task_tracker.TASKS_FILE.write_text("\n   \n\t")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_null_json_file(self):
+        task_tracker.TASKS_FILE.write_text("null")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_add_empty_file(self):
+        task_tracker.TASKS_FILE.write_text("")
+        task_tracker.cmd_add("First task")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], 1)
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):

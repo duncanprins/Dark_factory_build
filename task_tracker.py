@@ -27,9 +27,9 @@ def load_tasks():
     if not TASKS_FILE.exists():
         return []
     content = TASKS_FILE.read_text().strip()
-    if not content:
+    if not content:          # guard against empty file (avoids json.JSONDecodeError)
         return []
-    return json.loads(content)
+    return json.loads(content) or []
 
 
 def save_tasks(tasks):
