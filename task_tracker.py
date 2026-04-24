@@ -39,11 +39,15 @@ def next_id(tasks):
 
 
 def colorize_priority(priority, use_color):
-    """Return priority tag string, optionally wrapped in ANSI color codes."""
+    """Return priority tag string, optionally wrapped in ANSI color codes.
+
+    Unknown priority values produce no color codes. Add new priorities to
+    ANSI_COLORS to get correct coloring.
+    """
     if use_color:
         col = ANSI_COLORS.get(priority, "")
-        reset = ANSI_COLORS["reset"]
-        return f"{col}[{priority}]{reset}"
+        if col:
+            return f"{col}[{priority}]{ANSI_COLORS['reset']}"
     return f"[{priority}]"
 
 
