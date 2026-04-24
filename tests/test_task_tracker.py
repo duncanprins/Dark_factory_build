@@ -50,7 +50,7 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list(status="open")
         self.assertEqual(mock_print.call_count, 1)
 
-    def test_list_done_only(self):
+    def test_list_done_filters_correctly(self):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
@@ -59,14 +59,24 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
 
-    def test_list_done_excludes_open(self):
+    def test_list_done_empty(self):
+        task_tracker.cmd_add("Open task only")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        mock_print.assert_called_once_with("No tasks found.")
+
+    def test_main_list_done_flag(self):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list(status="done")
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
         self.assertNotIn("Open task", output)
 
     def test_done(self):
