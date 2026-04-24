@@ -83,6 +83,7 @@ def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
+        # text == priority here: colorize the priority label using its own color mapping
         colored_priority = colorize_priority(priority, priority, color)
         print(f"[{mark}] #{t['id']}: {t['title']} [{colored_priority}]{due_str}")
 

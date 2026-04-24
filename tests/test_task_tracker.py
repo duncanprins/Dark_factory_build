@@ -299,5 +299,21 @@ class TestColor(unittest.TestCase):
         self.assertIn("\033[31m", output)
 
 
+class TestColorizeHelper(unittest.TestCase):
+    def test_unknown_priority_returns_text_unchanged(self):
+        result = task_tracker.colorize_priority("urgent", "critical", use_color=True)
+        self.assertEqual(result, "urgent")
+        self.assertNotIn("\033[", result)
+
+    def test_use_color_false_returns_text_unchanged(self):
+        result = task_tracker.colorize_priority("high", "high", use_color=False)
+        self.assertEqual(result, "high")
+        self.assertNotIn("\033[", result)
+
+    def test_high_priority_wraps_with_red(self):
+        result = task_tracker.colorize_priority("high", "high", use_color=True)
+        self.assertEqual(result, "\033[31mhigh\033[0m")
+
+
 if __name__ == "__main__":
     unittest.main()
