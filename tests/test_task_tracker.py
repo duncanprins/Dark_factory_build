@@ -189,6 +189,15 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.TASKS_FILE.write_text("null")
         self.assertEqual(task_tracker.load_tasks(), [])
 
+    def test_load_tasks_whitespace_content(self):
+        task_tracker.TASKS_FILE.write_text("   \n  ")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_load_tasks_json_object(self):
+        # A dict is valid JSON but not a list — should return []
+        task_tracker.TASKS_FILE.write_text("{}")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
