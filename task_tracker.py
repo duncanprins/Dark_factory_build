@@ -48,7 +48,13 @@ def cmd_add(title, priority="medium", due_date=None):
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+    task = {
+        "id": next_id(tasks),
+        "title": title,
+        "status": "open",
+        "priority": priority,
+        "due_date": due_date,
+    }
     tasks.append(task)
     save_tasks(tasks)
     due_str = f" (due: {due_date})" if due_date else ""
@@ -101,11 +107,11 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        rows = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            rows.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
@@ -114,7 +120,7 @@ def cmd_publish():
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
-            "</tr></thead>\n<tbody>\n" + rows + "</tbody>\n</table>"
+            "</tr></thead>\n<tbody>\n" + "".join(rows) + "</tbody>\n</table>"
         )
     else:
         body_content = "<p>No open tasks.</p>"
@@ -162,13 +168,10 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
-        sort_priority = "--priority" in args
-        sort_due = "--sort-due" in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+        list_args = args[1:]
+        status, list_args = parse_flag(list_args, "--status")
+        sort_priority = "--priority" in list_args
+        sort_due = "--sort-due" in list_args
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
