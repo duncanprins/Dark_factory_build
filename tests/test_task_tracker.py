@@ -90,6 +90,23 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["title"], "Recovery task")
 
+    def test_load_tasks_whitespace_only_file_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text("\n   \n")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_done_with_empty_file(self):
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_done(1)
+        mock_print.assert_called_with("Task #1 not found.")
+
+    def test_delete_with_empty_file(self):
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_delete(1)
+        mock_print.assert_called_with("Task #1 not found.")
+
     def test_add_task_with_priority(self):
         task_tracker.cmd_add("Urgent task", priority="high")
         tasks = task_tracker.load_tasks()

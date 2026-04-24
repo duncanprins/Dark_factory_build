@@ -29,7 +29,12 @@ def load_tasks():
     content = TASKS_FILE.read_text().strip()
     if not content:
         return []
-    return json.loads(content)
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        print(f"Error: tasks.json is corrupted and cannot be read ({exc}).", file=sys.stderr)
+        print("Fix or delete tasks.json to continue.", file=sys.stderr)
+        sys.exit(1)
 
 
 def save_tasks(tasks):
@@ -175,13 +180,21 @@ def main():
         if len(args) < 2:
             print("Usage: task_tracker.py done <id>")
             sys.exit(1)
-        cmd_done(int(args[1]))
+        try:
+            cmd_done(int(args[1]))
+        except ValueError:
+            print(f"Invalid task id: {args[1]!r}. Expected an integer.")
+            sys.exit(1)
 
     elif command == "delete":
         if len(args) < 2:
             print("Usage: task_tracker.py delete <id>")
             sys.exit(1)
-        cmd_delete(int(args[1]))
+        try:
+            cmd_delete(int(args[1]))
+        except ValueError:
+            print(f"Invalid task id: {args[1]!r}. Expected an integer.")
+            sys.exit(1)
 
     elif command == "publish":
         cmd_publish()
