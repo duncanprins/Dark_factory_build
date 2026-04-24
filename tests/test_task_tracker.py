@@ -195,6 +195,14 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks, [])
 
+    def test_load_tasks_whitespace_only_file(self):
+        """load_tasks returns [] for files containing only whitespace."""
+        for content in [" ", "\n", "\t", "  \n  "]:
+            with self.subTest(content=repr(content)):
+                task_tracker.TASKS_FILE.write_text(content)
+                tasks = task_tracker.load_tasks()
+                self.assertEqual(tasks, [])
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):

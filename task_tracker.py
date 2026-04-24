@@ -24,11 +24,18 @@ def parse_flag(args, flag):
 
 
 def load_tasks():
+    """Return the task list from TASKS_FILE.
+
+    Returns [] if the file is missing, empty, whitespace-only, or contains
+    JSON null.  Raises json.JSONDecodeError for other malformed content so
+    that real file corruption surfaces rather than being silently swallowed.
+    """
     if not TASKS_FILE.exists():
         return []
     content = TASKS_FILE.read_text().strip()
     if not content:
         return []
+    # json.loads returns None for a "null" file; `or []` normalises that to []
     return json.loads(content) or []
 
 
