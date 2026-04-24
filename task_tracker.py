@@ -9,6 +9,12 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+ANSI_COLORS = {
+    "high": "\033[31;1m",   # red bold
+    "medium": "\033[33m",   # yellow
+    "low": "\033[32m",      # green
+}
+ANSI_RESET = "\033[0m"
 
 
 def parse_flag(args, flag):
@@ -37,6 +43,14 @@ def next_id(tasks):
     return max((t["id"] for t in tasks), default=0) + 1
 
 
+def colorize_priority(priority, use_color):
+    """Wrap priority string in ANSI color codes if use_color is True."""
+    if not use_color:
+        return priority
+    code = ANSI_COLORS.get(priority, "")
+    return f"{code}{priority}{ANSI_RESET}" if code else priority
+
+
 def cmd_add(title, priority="medium", due_date=None):
     if due_date is not None:
         try:
@@ -52,7 +66,7 @@ def cmd_add(title, priority="medium", due_date=None):
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False, sort_due=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False, use_color=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -67,7 +81,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
+        colored_priority = colorize_priority(priority, use_color)
+        print(f"[{mark}] #{t['id']}: {t['title']} [{colored_priority}]{due_str}")
 
 
 def cmd_done(task_id):
@@ -162,11 +177,12 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        use_color = "--color" in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority, sort_due)
+        cmd_list(status, sort_priority, sort_due, use_color)
 
     elif command == "done":
         if len(args) < 2:
