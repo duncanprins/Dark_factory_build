@@ -8,6 +8,7 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 - Add, list, complete, and delete tasks
 - Persist tasks to a local JSON file
 - Filter tasks by status
+- Color-coded priority tags in list output (`--color` / `--no-color`)
 
 ## Usage
 

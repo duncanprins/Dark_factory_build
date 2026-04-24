@@ -265,6 +265,7 @@ class TestMainColorFlag(unittest.TestCase):
     def tearDown(self):
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
+        task_tracker.TASKS_FILE = Path("tasks.json")  # restore module default
 
     def test_color_flag_emits_ansi(self):
         with patch("builtins.print") as mock_print:
@@ -299,6 +300,33 @@ class TestMainColorFlag(unittest.TestCase):
                 task_tracker.main()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
+
+    def test_color_flag_medium_emits_yellow(self):
+        task_tracker.cmd_add("Normal task", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        medium_output = next(o for o in outputs if "Normal task" in o)
+        self.assertIn("\033[33m", medium_output)
+        self.assertIn("\033[0m", medium_output)
+
+    def test_color_flag_low_emits_green(self):
+        task_tracker.cmd_add("Low task", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        low_output = next(o for o in outputs if "Low task" in o)
+        self.assertIn("\033[32m", low_output)
+        self.assertIn("\033[0m", low_output)
+
+    def test_color_flag_unknown_priority_no_ansi(self):
+        """Unknown priority values must not emit ANSI codes even with color=True."""
+        task_tracker.cmd_add("Weird task", priority="urgent")  # not in PRIORITY_COLORS
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        outputs = [call[0][0] for call in mock_print.call_args_list]
+        weird_output = next(o for o in outputs if "Weird task" in o)
+        self.assertNotIn("\033[", weird_output)
 
 
 if __name__ == "__main__":

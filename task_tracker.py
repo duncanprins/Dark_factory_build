@@ -176,6 +176,7 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        # --no-color takes precedence when both flags are present
         color = "--color" in args and "--no-color" not in args
         if "--status" in args:
             idx = args.index("--status")
