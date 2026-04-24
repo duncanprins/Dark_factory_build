@@ -24,6 +24,7 @@ def parse_flag(args, flag):
 
 
 def load_tasks():
+    """Load tasks from TASKS_FILE. Returns [] if file is missing, empty, or contains invalid/non-list JSON."""
     if not TASKS_FILE.exists():
         return []
     text = TASKS_FILE.read_text().strip()
@@ -32,8 +33,12 @@ def load_tasks():
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
+        print(f"Warning: {TASKS_FILE} contains invalid JSON — treating as empty.", file=sys.stderr)
         return []
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        print(f"Warning: {TASKS_FILE} does not contain a list — treating as empty.", file=sys.stderr)
+        return []
+    return data
 
 
 def save_tasks(tasks):

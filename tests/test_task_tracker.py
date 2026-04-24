@@ -165,23 +165,43 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
 
+    def test_list_whitespace_only_file(self):
+        task_tracker.TASKS_FILE.write_text("   \n  ")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
     def test_list_null_json(self):
         task_tracker.TASKS_FILE.write_text("null")
-        with patch("builtins.print") as mock_print:
+        with patch("builtins.print") as mock_print, patch("sys.stderr"):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
 
     def test_list_invalid_json(self):
         task_tracker.TASKS_FILE.write_text("{not valid json}")
-        with patch("builtins.print") as mock_print:
+        with patch("builtins.print") as mock_print, patch("sys.stderr"):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
 
     def test_list_dict_json(self):
         task_tracker.TASKS_FILE.write_text('{"key": "value"}')
-        with patch("builtins.print") as mock_print:
+        with patch("builtins.print") as mock_print, patch("sys.stderr"):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
+
+    def test_load_tasks_invalid_json_warns_stderr(self):
+        task_tracker.TASKS_FILE.write_text("{not valid json}")
+        with patch("sys.stderr") as mock_stderr:
+            result = task_tracker.load_tasks()
+        self.assertEqual(result, [])
+        mock_stderr.write.assert_called()
+
+    def test_load_tasks_non_list_json_warns_stderr(self):
+        task_tracker.TASKS_FILE.write_text("null")
+        with patch("sys.stderr") as mock_stderr:
+            result = task_tracker.load_tasks()
+        self.assertEqual(result, [])
+        mock_stderr.write.assert_called()
 
     def test_backward_compat_no_due_date(self):
         tasks = [{"id": 1, "title": "Old task", "status": "open", "priority": "medium"}]
