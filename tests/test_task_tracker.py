@@ -168,6 +168,44 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+    def test_list_color_high_contains_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)   # red
+        self.assertIn("\033[0m", output)    # reset
+        self.assertIn("[high]", output)
+
+    def test_list_color_medium_contains_ansi(self):
+        task_tracker.cmd_add("Normal task", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m", output)   # yellow
+
+    def test_list_color_low_contains_ansi(self):
+        task_tracker.cmd_add("Low task", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m", output)   # green
+
+    def test_list_no_color_default_no_ansi(self):
+        task_tracker.cmd_add("Plain task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()          # color=False by default
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_list_color_still_shows_priority_text(self):
+        task_tracker.cmd_add("Tagged task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("[high]", output)
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
