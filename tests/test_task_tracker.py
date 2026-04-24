@@ -167,6 +167,37 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_list_done_only(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
+
+    def test_list_done_excludes_open(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in c for c in calls))
+        self.assertFalse(any("Open task" in c for c in calls))
+
+    def test_main_done_flag_filters_to_done_tasks(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in c for c in calls))
+        self.assertFalse(any("Open task" in c for c in calls))
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):

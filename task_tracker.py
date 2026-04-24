@@ -162,6 +162,9 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        if "--done" in args:
+            status = "done"
+        # --status is evaluated after --done so it can override it
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
