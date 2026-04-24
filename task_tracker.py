@@ -44,7 +44,11 @@ def next_id(tasks):
 
 
 def colorize_priority(priority, use_color):
-    """Wrap priority string in ANSI color codes if use_color is True."""
+    """Wrap priority string in ANSI color codes if use_color is True.
+
+    Returns the priority string unchanged if use_color is False or if
+    the priority value is not found in ANSI_COLORS.
+    """
     if not use_color:
         return priority
     code = ANSI_COLORS.get(priority, "")

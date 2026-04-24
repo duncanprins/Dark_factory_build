@@ -205,7 +205,19 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list(use_color=True)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("high", output)
-        self.assertIn("[", output)
+        # Verify the bracket immediately precedes the colored priority text
+        self.assertIn("[" + "\033[31;1m" + "high", output)
+
+    def test_colorize_unknown_priority_returns_plain(self):
+        # Unknown priority with use_color=True should not emit any ANSI codes
+        result = task_tracker.colorize_priority("urgent", use_color=True)
+        self.assertEqual(result, "urgent")
+        self.assertNotIn("\033[", result)
+
+    def test_colorize_known_priority_with_color_false(self):
+        # use_color=False must return plain string regardless of priority
+        result = task_tracker.colorize_priority("high", use_color=False)
+        self.assertEqual(result, "high")
 
 
 class TestPublish(unittest.TestCase):
