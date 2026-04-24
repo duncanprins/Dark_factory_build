@@ -54,8 +54,9 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list(status="done")
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Done task", output)
@@ -65,12 +66,25 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list(status="open")
+        with patch("sys.argv", ["task_tracker.py", "list"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Open task", output)
         self.assertNotIn("Done task", output)
+
+    def test_list_status_flag_still_works_via_main(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--status", "done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
 
     def test_done(self):
         task_tracker.cmd_add("Complete me")
