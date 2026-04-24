@@ -168,6 +168,34 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+    def test_load_tasks_empty_file(self):
+        """load_tasks returns [] when file exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_list_empty_file(self):
+        """cmd_list prints 'No tasks found.' when file exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_add_to_empty_file(self):
+        """cmd_add succeeds when file exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        task_tracker.cmd_add("First task")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["title"], "First task")
+
+    def test_load_tasks_null_content(self):
+        """load_tasks returns [] when file contains JSON null."""
+        task_tracker.TASKS_FILE.write_text("null")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
