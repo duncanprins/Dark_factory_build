@@ -171,16 +171,38 @@ class TestTaskTracker(unittest.TestCase):
         result = task_tracker.colorize("hello", "\033[31m")
         self.assertEqual(result, "\033[31m" + "hello" + "\033[0m")
 
-    def test_colorize_noop_when_code_none(self):
+    def test_colorize_noop_when_code_falsy(self):
         self.assertEqual(task_tracker.colorize("hello", None), "hello")
+        self.assertEqual(task_tracker.colorize("hello", ""), "hello")
 
     def test_list_color_flag_emits_ansi(self):
         task_tracker.cmd_add("Urgent task", priority="high")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list(color=True)
         output = mock_print.call_args_list[0][0][0]
-        self.assertIn("\033[31m", output)
-        self.assertIn("\033[0m", output)
+        self.assertIn("\033[31m[high]\033[0m", output)
+
+    def test_list_color_medium_priority_emits_yellow(self):
+        task_tracker.cmd_add("Normal task", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m[medium]\033[0m", output)
+
+    def test_list_color_low_priority_emits_green(self):
+        task_tracker.cmd_add("Backlog task", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m[low]\033[0m", output)
+
+    def test_main_color_flag_emits_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m[high]\033[0m", output)
 
     def test_main_no_color_overrides_color(self):
         task_tracker.cmd_add("Urgent task", priority="high")
