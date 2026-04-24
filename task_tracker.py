@@ -164,7 +164,7 @@ def main():
         sort_due = "--sort-due" in args
         if "--done" in args:
             status = "done"
-        elif "--status" in args:
+        elif "--status" in args:  # --done takes precedence if both flags present
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]

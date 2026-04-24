@@ -177,6 +177,7 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
 
     def test_list_default_shows_only_open(self):
         task_tracker.cmd_add("Open task")
@@ -188,6 +189,32 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Open task", output)
+        self.assertNotIn("Done task", output)
+
+    def test_list_done_flag_takes_precedence_over_status(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        # --done should win even when --status open is also supplied
+        with patch("sys.argv", ["task_tracker.py", "list", "--done", "--status", "open"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
+
+    def test_list_status_flag_via_main(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--status", "done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
 
 
 class TestPublish(unittest.TestCase):
