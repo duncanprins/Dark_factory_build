@@ -174,12 +174,27 @@ class TestTaskTracker(unittest.TestCase):
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list(status="done")
         self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
 
     def test_list_done_flag_no_done_tasks(self):
         task_tracker.cmd_add("Open task")
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_list(status="done")
         mock_print.assert_called_with("No tasks found.")
+
+    def test_list_done_flag_cli_integration(self):
+        """--done flag in main() sets status="done" and routes to cmd_list correctly."""
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        self.assertEqual(mock_print.call_count, 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("Done task", output)
+        self.assertNotIn("Open task", output)
 
 
 class TestPublish(unittest.TestCase):
