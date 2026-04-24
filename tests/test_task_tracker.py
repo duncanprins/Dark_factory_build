@@ -188,9 +188,8 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
-        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
-            with patch("builtins.print") as mock_print:
-                task_tracker.main()
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]), patch("builtins.print") as mock_print:
+            task_tracker.main()
         self.assertEqual(mock_print.call_count, 1)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("Done task", output)
