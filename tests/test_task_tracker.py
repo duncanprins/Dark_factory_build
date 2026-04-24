@@ -167,6 +167,20 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_list_done_flag_shows_only_done_tasks(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        self.assertEqual(mock_print.call_count, 1)
+
+    def test_list_done_flag_no_done_tasks(self):
+        task_tracker.cmd_add("Open task")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(status="done")
+        mock_print.assert_called_with("No tasks found.")
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
