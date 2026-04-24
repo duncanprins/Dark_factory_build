@@ -80,7 +80,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        priority_tag = colorize(f"[{priority}]", PRIORITY_COLORS.get(priority) if color else None)
+        color_code = PRIORITY_COLORS.get(priority) if color else None
+        priority_tag = colorize(f"[{priority}]", color_code)
         print(f"[{mark}] #{t['id']}: {t['title']} {priority_tag}{due_str}")
 
 
@@ -112,16 +113,17 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        row_list = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            row_list.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
                 f"<td>{due_date}</td></tr>\n"
             )
+        rows = "".join(row_list)
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
