@@ -17,6 +17,8 @@ python task_tracker.py list
 python task_tracker.py list --status open
 python task_tracker.py done 1
 python task_tracker.py delete 1
+python task_tracker.py list --color             # colored priority output
+python task_tracker.py list --color --no-color  # explicit disable (for scripts)
 ```
 
 ## Development
