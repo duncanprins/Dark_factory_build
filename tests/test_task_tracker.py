@@ -243,5 +243,63 @@ class TestPublish(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", content)
 
 
+class TestColorize(unittest.TestCase):
+    def test_colorize_wraps_text(self):
+        result = task_tracker.colorize("hello", "\033[31m")
+        self.assertEqual(result, "\033[31m" + "hello" + "\033[0m")
+
+    def test_colorize_noop_when_code_none(self):
+        self.assertEqual(task_tracker.colorize("hello", None), "hello")
+
+    def test_colorize_noop_when_code_empty(self):
+        self.assertEqual(task_tracker.colorize("hello", ""), "hello")
+
+
+class TestMainColorFlag(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+        task_tracker.cmd_add("Urgent task", priority="high")
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_color_flag_emits_ansi(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_no_color_flag_suppresses_ansi(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_main_color_flag_emits_ansi(self):
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+    def test_main_no_color_suppresses_ansi(self):
+        with patch("sys.argv", ["task_tracker.py", "list", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_main_no_color_overrides_color(self):
+        with patch("sys.argv", ["task_tracker.py", "list", "--color", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+
 if __name__ == "__main__":
     unittest.main()
