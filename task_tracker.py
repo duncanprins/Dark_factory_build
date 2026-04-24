@@ -152,11 +152,9 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
-        cmd_add(title, priority, due_date)
+        cmd_add(title, priority or "medium", due_date)
 
     elif command == "list":
         status = "open"
