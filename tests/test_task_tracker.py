@@ -159,6 +159,30 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(len(tasks), 0)
 
+    def test_list_empty_file(self):
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_list_null_json(self):
+        task_tracker.TASKS_FILE.write_text("null")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_list_invalid_json(self):
+        task_tracker.TASKS_FILE.write_text("{not valid json}")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_list_dict_json(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
     def test_backward_compat_no_due_date(self):
         tasks = [{"id": 1, "title": "Old task", "status": "open", "priority": "medium"}]
         task_tracker.save_tasks(tasks)
