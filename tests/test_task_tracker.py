@@ -167,7 +167,6 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
-
     def test_list_color_high_contains_ansi(self):
         task_tracker.cmd_add("Urgent task", priority="high")
         with patch("builtins.print") as mock_print:
@@ -199,6 +198,7 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()          # color=False by default
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
+
 
 class TestColorize(unittest.TestCase):
     def test_colorize_wraps_text(self):
