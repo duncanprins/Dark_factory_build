@@ -70,6 +70,48 @@ class TestTaskTracker(unittest.TestCase):
         self.assertTrue(any("Done task" in c for c in calls))
         self.assertFalse(any("Open task" in c for c in calls))
 
+    def test_main_done_flag_filters_to_done_tasks(self):
+        """Tests the --done CLI flag routes correctly through main() arg parsing."""
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in c for c in calls))
+        self.assertFalse(any("Open task" in c for c in calls))
+
+    def test_main_status_overrides_done_flag(self):
+        """--status takes precedence over --done when both are passed."""
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+
+        with patch("sys.argv", ["task_tracker.py", "list", "--done", "--status", "open"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Open task" in c for c in calls))
+        self.assertFalse(any("Done task" in c for c in calls))
+
+    def test_main_status_done_still_works(self):
+        """--status done continues to work for backward compatibility."""
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+
+        with patch("sys.argv", ["task_tracker.py", "list", "--status", "done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in c for c in calls))
+        self.assertFalse(any("Open task" in c for c in calls))
+
     def test_done(self):
         task_tracker.cmd_add("Complete me")
         task_tracker.cmd_done(1)

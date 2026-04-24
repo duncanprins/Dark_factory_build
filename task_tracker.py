@@ -164,6 +164,7 @@ def main():
         sort_due = "--sort-due" in args
         if "--done" in args:
             status = "done"
+        # --status is evaluated after --done so it can override it (e.g. --done --status open is valid)
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
