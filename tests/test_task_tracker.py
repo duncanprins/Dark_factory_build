@@ -189,6 +189,30 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         mock_print.assert_called_with("No tasks found.")
 
+    def test_load_tasks_whitespace_only_file(self):
+        task_tracker.TASKS_FILE.write_text("\n\n")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_non_list_json(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_invalid_json_warns_stderr(self):
+        task_tracker.TASKS_FILE.write_text("{invalid")
+        with patch("sys.stderr") as mock_stderr:
+            tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+        mock_stderr.write.assert_called()
+
+    def test_load_tasks_non_list_json_warns_stderr(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        with patch("sys.stderr") as mock_stderr:
+            tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+        mock_stderr.write.assert_called()
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
