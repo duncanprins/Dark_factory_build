@@ -141,7 +141,7 @@ def main():
     args = sys.argv[1:]
     if not args:
         print("Usage: task_tracker.py <command> [args]")
-        print("Commands: add, list, done, delete, publish")
+        print("Commands: add, list [--done] [--status open|done], done, delete, publish")
         sys.exit(1)
 
     command = args[0]
@@ -159,9 +159,11 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
+        status = "open"
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        if "--done" in args:
+            status = "done"
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
