@@ -18,6 +18,7 @@ PRIORITY_COLOR = {"high": ANSI_RED, "medium": ANSI_YELLOW, "low": ANSI_GREEN}
 
 
 def colorize(text, color_code, use_color):
+    """Wrap text in an ANSI color code if use_color is True; always resets after."""
     if not use_color:
         return text
     return f"{color_code}{text}{ANSI_RESET}"
@@ -60,7 +61,8 @@ def cmd_add(title, priority="medium", due_date=None, use_color=False):
     task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
     tasks.append(task)
     save_tasks(tasks)
-    priority_label = colorize(f"[{priority}]", PRIORITY_COLOR.get(priority, ""), use_color)
+    color_code = PRIORITY_COLOR.get(priority)
+    priority_label = colorize(f"[{priority}]", color_code, use_color and color_code is not None)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} {priority_label}{due_str}")
 
@@ -80,7 +82,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False, use_color=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        priority_label = colorize(f"[{priority}]", PRIORITY_COLOR.get(priority, ""), use_color)
+        color_code = PRIORITY_COLOR.get(priority)
+        priority_label = colorize(f"[{priority}]", color_code, use_color and color_code is not None)
         print(f"[{mark}] #{t['id']}: {t['title']} {priority_label}{due_str}")
 
 

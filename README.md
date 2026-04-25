@@ -18,8 +18,9 @@ python task_tracker.py list
 python task_tracker.py list --status open
 python task_tracker.py done 1
 python task_tracker.py delete 1
-python task_tracker.py --color list
+python task_tracker.py --color list            # --color can appear anywhere in the command
 python task_tracker.py --color list --priority
+python task_tracker.py list --color            # also valid
 ```
 
 ## Development

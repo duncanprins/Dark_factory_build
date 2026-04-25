@@ -253,10 +253,14 @@ class TestColor(unittest.TestCase):
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
 
-    def test_color_flag_no_crash(self):
-        task_tracker.cmd_add("Test task", priority="high")
-        with patch("builtins.print"):
+    def test_color_unknown_priority_no_ansi_leak(self):
+        """Unknown priority should not emit ANSI codes when use_color=True."""
+        tasks = [{"id": 1, "title": "Old task", "status": "open", "priority": "urgent"}]
+        task_tracker.save_tasks(tasks)
+        with patch("builtins.print") as mock_print:
             task_tracker.cmd_list(use_color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
 
     def test_color_high_priority_contains_ansi(self):
         task_tracker.cmd_add("High task", priority="high")
@@ -297,6 +301,25 @@ class TestColor(unittest.TestCase):
     def test_main_color_flag_stripped(self):
         task_tracker.cmd_add("Color test task", priority="high")
         with patch.object(sys, "argv", ["task_tracker.py", "--color", "list"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+    def test_color_add_confirmation_contains_ansi(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Color task", priority="high", use_color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+    def test_no_color_add_confirmation_plain(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Plain task", priority="high", use_color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_main_color_flag_add_command(self):
+        with patch.object(sys, "argv", ["task_tracker.py", "--color", "add", "Color task", "--priority", "high"]):
             with patch("builtins.print") as mock_print:
                 task_tracker.main()
         output = mock_print.call_args_list[0][0][0]
