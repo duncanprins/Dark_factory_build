@@ -162,7 +162,9 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
-        if "--status" in args:
+        if "--done" in args:
+            status = "done"
+        elif "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
