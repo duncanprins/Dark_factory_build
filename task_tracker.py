@@ -24,9 +24,20 @@ def parse_flag(args, flag):
 
 
 def load_tasks():
+    """Load tasks from TASKS_FILE, returning [] on any read/parse failure.
+
+    Handles: missing file, empty file, invalid JSON, non-list JSON root.
+    Failures are silently ignored — callers always receive a valid list.
+
+    Returns:
+        list: Parsed task list, or [] if the file is absent or unreadable.
+    """
     if not TASKS_FILE.exists():
         return []
-    text = TASKS_FILE.read_text().strip()
+    try:
+        text = TASKS_FILE.read_text().strip()
+    except (OSError, UnicodeDecodeError):
+        return []
     if not text:
         return []
     try:

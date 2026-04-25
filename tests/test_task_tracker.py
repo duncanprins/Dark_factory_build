@@ -189,6 +189,16 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks, [])
 
+    def test_load_tasks_whitespace_only_file_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text("  \n  ")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_dict_content_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
