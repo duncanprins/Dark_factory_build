@@ -26,7 +26,6 @@ def parse_flag(args, flag):
 
 
 def colorize(text, color_code):
-    """Wrap text with an ANSI color_code and reset suffix."""
     return f"{color_code}{text}{ANSI_RESET}"
 
 
@@ -170,14 +169,10 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
+        status, _ = parse_flag(args, "--status")
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
         color = "--color" in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
         cmd_list(status, sort_priority, sort_due, color)
 
     elif command == "done":
