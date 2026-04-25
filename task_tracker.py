@@ -26,7 +26,15 @@ def parse_flag(args, flag):
 def load_tasks():
     if not TASKS_FILE.exists():
         return []
-    return json.loads(TASKS_FILE.read_text())
+    try:
+        tasks = json.loads(TASKS_FILE.read_text())
+        if not isinstance(tasks, list):
+            print(f"Warning: {TASKS_FILE} contains unexpected content. Treating as empty.", file=sys.stderr)
+            return []
+        return tasks
+    except json.JSONDecodeError:
+        print(f"Warning: {TASKS_FILE} is not valid JSON. Treating as empty.", file=sys.stderr)
+        return []
 
 
 def save_tasks(tasks):
@@ -159,13 +167,9 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+        status, args = parse_flag(args, "--status")
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":

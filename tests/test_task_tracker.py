@@ -72,6 +72,46 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_delete(99)
         mock_print.assert_called_with("Task #99 not found.")
 
+    def test_list_empty_file(self):
+        """task list should print 'No tasks found.' when file exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_load_tasks_empty_file_returns_empty_list(self):
+        """load_tasks() should return [] when file exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_null_content_returns_empty_list(self):
+        """load_tasks() should return [] when file contains JSON null."""
+        task_tracker.TASKS_FILE.write_text("null")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_whitespace_only_returns_empty_list(self):
+        """load_tasks() should return [] when file contains only whitespace."""
+        task_tracker.TASKS_FILE.write_text("   \n  ")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_corrupt_json_warns_stderr(self):
+        """load_tasks() should print a warning to stderr when JSON is invalid."""
+        task_tracker.TASKS_FILE.write_text("{invalid json")
+        with patch("sys.stderr") as mock_stderr:
+            tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+        mock_stderr.write.assert_called()
+
+    def test_load_tasks_non_list_json_warns_stderr(self):
+        """load_tasks() should print a warning to stderr when JSON is not a list."""
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        with patch("sys.stderr") as mock_stderr:
+            tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+        mock_stderr.write.assert_called()
 
     def test_add_task_with_priority(self):
         task_tracker.cmd_add("Urgent task", priority="high")
