@@ -181,11 +181,13 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks, [])
 
-    def test_load_tasks_whitespace_only_returns_empty_list(self):
-        """load_tasks() should return [] when file contains only whitespace."""
-        task_tracker.TASKS_FILE.write_text("   \n  ")
-        tasks = task_tracker.load_tasks()
-        self.assertEqual(tasks, [])
+    def test_load_tasks_various_blank_content_returns_empty_list(self):
+        """load_tasks() should return [] for all blank/whitespace-only content."""
+        blank_variants = ["   \n  ", "\n", "  \n  ", "\t\n\t", "   "]
+        for content in blank_variants:
+            task_tracker.TASKS_FILE.write_text(content)
+            tasks = task_tracker.load_tasks()
+            self.assertEqual(tasks, [], f"Failed for content={repr(content)}")
 
 
 class TestPublish(unittest.TestCase):

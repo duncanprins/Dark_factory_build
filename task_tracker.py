@@ -29,7 +29,11 @@ def load_tasks():
     content = TASKS_FILE.read_text().strip()
     if not content:
         return []
-    return json.loads(content)
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        print(f"Error: {TASKS_FILE} contains invalid JSON. Fix or delete the file.", file=sys.stderr)
+        sys.exit(1)
 
 
 def save_tasks(tasks):
