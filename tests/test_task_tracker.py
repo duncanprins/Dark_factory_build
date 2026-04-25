@@ -61,6 +61,20 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_done(99)
         mock_print.assert_called_with("Task #99 not found.")
 
+    def test_list_empty_file(self):
+        """task list should print 'No tasks found.' when tasks.json exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_once_with("No tasks found.")
+
+    def test_list_null_json_file(self):
+        """task list should print 'No tasks found.' when tasks.json contains JSON null."""
+        task_tracker.TASKS_FILE.write_text("null")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_once_with("No tasks found.")
+
     def test_delete(self):
         task_tracker.cmd_add("Delete me")
         task_tracker.cmd_delete(1)
