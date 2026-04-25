@@ -10,6 +10,21 @@ from pathlib import Path
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
+ANSI_COLORS = {
+    "high": "\033[91m",    # bright red
+    "medium": "\033[93m",  # bright yellow
+    "low": "\033[92m",     # bright green
+    "reset": "\033[0m",
+}
+
+
+def colorize(text, color_key):
+    """Wrap text in ANSI color codes. Returns plain text if color_key unknown."""
+    start = ANSI_COLORS.get(color_key, "")
+    if not start:
+        return text
+    return f"{start}{text}{ANSI_COLORS['reset']}"
+
 
 def parse_flag(args, flag):
     """Extract a flag value from args list. Returns (value_or_none, remaining_args)."""
@@ -52,7 +67,7 @@ def cmd_add(title, priority="medium", due_date=None):
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False, sort_due=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -67,7 +82,8 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
+        priority_str = colorize(priority, priority) if color else priority
+        print(f"[{mark}] #{t['id']}: {t['title']} [{priority_str}]{due_str}")
 
 
 def cmd_done(task_id):
@@ -162,11 +178,12 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        use_color = "--color" in args and "--no-color" not in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority, sort_due)
+        cmd_list(status, sort_priority, sort_due, use_color)
 
     elif command == "done":
         if len(args) < 2:

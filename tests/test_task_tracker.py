@@ -168,6 +168,60 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+class TestColor(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_color_flag_adds_ansi_codes(self):
+        task_tracker.cmd_add("Urgent", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+    def test_color_high_priority_uses_red(self):
+        task_tracker.cmd_add("Urgent", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[91m", output)
+
+    def test_color_medium_priority_uses_yellow(self):
+        task_tracker.cmd_add("Normal", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[93m", output)
+
+    def test_color_low_priority_uses_green(self):
+        task_tracker.cmd_add("Minor", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[92m", output)
+
+    def test_no_color_by_default(self):
+        task_tracker.cmd_add("Task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_colorize_returns_plain_for_unknown_key(self):
+        result = task_tracker.colorize("text", "unknown")
+        self.assertEqual(result, "text")
+
+    def test_colorize_wraps_with_reset(self):
+        result = task_tracker.colorize("text", "high")
+        self.assertTrue(result.endswith("\033[0m"))
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
