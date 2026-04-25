@@ -50,7 +50,7 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list(status="open")
         self.assertEqual(mock_print.call_count, 1)
 
-    def test_list_default_shows_only_open(self):
+    def test_list_status_open_shows_task_content(self):
         task_tracker.cmd_add("Open task")
         task_tracker.cmd_add("Done task")
         task_tracker.cmd_done(2)
@@ -201,6 +201,59 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
+
+
+class TestMainListParsing(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_main_list_default_shows_only_open(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Open task" in c for c in calls))
+        self.assertFalse(any("Done task" in c for c in calls))
+
+    def test_main_list_done_flag(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--done"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Done task" in c for c in calls))
+        self.assertFalse(any("Open task" in c for c in calls))
+
+    def test_main_list_status_overrides_done_flag(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("sys.argv", ["task_tracker.py", "list", "--done", "--status", "open"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Open task" in c for c in calls))
+        self.assertFalse(any("Done task" in c for c in calls))
+
+    def test_main_list_status_missing_value_exits(self):
+        with patch("sys.argv", ["task_tracker.py", "list", "--status"]):
+            with patch("builtins.print") as mock_print:
+                with self.assertRaises(SystemExit) as cm:
+                    task_tracker.main()
+        self.assertEqual(cm.exception.code, 1)
+        calls = [str(c) for c in mock_print.call_args_list]
+        self.assertTrue(any("Usage" in c for c in calls))
 
 
 class TestPublish(unittest.TestCase):

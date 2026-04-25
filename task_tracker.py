@@ -164,10 +164,13 @@ def main():
         sort_due = "--sort-due" in args
         if "--done" in args:
             status = "done"
+        # --status takes precedence over --done when both are supplied
         if "--status" in args:
             idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+            if idx + 1 >= len(args):
+                print("Usage: task_tracker.py list --status open|done")
+                sys.exit(1)
+            status = args[idx + 1]
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
