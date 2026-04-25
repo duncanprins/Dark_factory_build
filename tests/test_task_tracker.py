@@ -167,6 +167,33 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_list_color_flag_adds_ansi_codes(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.stdout") as mock_stdout:
+            mock_stdout.isatty.return_value = True
+            with patch("builtins.print") as mock_print:
+                task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+    def test_list_no_color_flag_no_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+        self.assertIn("[high]", output)
+
+    def test_list_color_non_tty_no_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.stdout") as mock_stdout:
+            mock_stdout.isatty.return_value = False
+            with patch("builtins.print") as mock_print:
+                task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+        self.assertIn("[high]", output)
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
