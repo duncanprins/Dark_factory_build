@@ -24,14 +24,7 @@ def parse_flag(args, flag):
 
 
 def load_tasks():
-    """Load tasks from TASKS_FILE, returning [] on any read/parse failure.
-
-    Handles: missing file, empty file, invalid JSON, non-list JSON root.
-    Failures are silently ignored — callers always receive a valid list.
-
-    Returns:
-        list: Parsed task list, or [] if the file is absent or unreadable.
-    """
+    """Load tasks from TASKS_FILE, returning [] on any read/parse failure."""
     if not TASKS_FILE.exists():
         return []
     try:
@@ -118,16 +111,17 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        row_parts = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            row_parts.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
-                f"<td>{due_date}</td></tr>\n"
+                f"<td>{due_date}</td></tr>"
             )
+        rows = "\n".join(row_parts) + "\n"
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
@@ -136,20 +130,28 @@ def cmd_publish():
     else:
         body_content = "<p>No open tasks.</p>"
 
-    page = (
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
-        '<meta charset="UTF-8">\n<title>Open Tasks</title>\n<style>\n'
-        "body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; }\n"
-        "table { border-collapse: collapse; width: 100%; }\n"
-        "th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }\n"
-        "th { background: #f5f5f5; }\n"
-        ".high { color: #c0392b; font-weight: bold; }\n"
-        ".medium { color: #e67e22; }\n"
-        ".low { color: #27ae60; }\n"
-        "</style>\n</head>\n<body>\n"
-        f"<h1>Open Tasks</h1>\n{body_content}\n"
-        "</body>\n</html>\n"
-    )
+    page = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Open Tasks</title>
+<style>
+body {{ font-family: sans-serif; max-width: 800px; margin: 2rem auto; }}
+table {{ border-collapse: collapse; width: 100%; }}
+th, td {{ border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }}
+th {{ background: #f5f5f5; }}
+.high {{ color: #c0392b; font-weight: bold; }}
+.medium {{ color: #e67e22; }}
+.low {{ color: #27ae60; }}
+</style>
+</head>
+<body>
+<h1>Open Tasks</h1>
+{body_content}
+</body>
+</html>
+"""
 
     Path("tasks.html").write_text(page)
     count = len(open_tasks)
@@ -172,8 +174,7 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
+        priority = priority or "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
         cmd_add(title, priority, due_date)
