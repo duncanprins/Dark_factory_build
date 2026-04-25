@@ -13,8 +13,9 @@ Built incrementally by the AI Dark Factory (Archon-based coding factory).
 
 ```bash
 python task_tracker.py add "Write tests for task listing"
-python task_tracker.py list
-python task_tracker.py list --status open
+python task_tracker.py list                    # shows only open tasks
+python task_tracker.py list --done             # shows only completed tasks
+python task_tracker.py list --status open      # explicit open filter (same as default)
 python task_tracker.py done 1
 python task_tracker.py delete 1
 ```
