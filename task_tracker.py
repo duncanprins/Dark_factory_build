@@ -141,7 +141,7 @@ def main():
     args = sys.argv[1:]
     if not args:
         print("Usage: task_tracker.py <command> [args]")
-        print("Commands: add, list [--done] [--status open|done] [--priority] [--sort-due], done, delete, publish")
+        print("Commands: add, list [--done | --status open|done] [--priority] [--sort-due], done, delete, publish")
         sys.exit(1)
 
     command = args[0]
