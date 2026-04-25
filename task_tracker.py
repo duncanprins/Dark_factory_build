@@ -28,8 +28,12 @@ def load_tasks():
         return []
     try:
         tasks = json.loads(TASKS_FILE.read_text())
-        return tasks if isinstance(tasks, list) else []
+        if not isinstance(tasks, list):
+            print(f"Warning: {TASKS_FILE} contains unexpected content. Treating as empty.", file=sys.stderr)
+            return []
+        return tasks
     except json.JSONDecodeError:
+        print(f"Warning: {TASKS_FILE} is not valid JSON. Treating as empty.", file=sys.stderr)
         return []
 
 
