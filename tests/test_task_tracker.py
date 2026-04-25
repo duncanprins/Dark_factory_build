@@ -174,6 +174,7 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[31m", output)
         self.assertIn("\033[0m", output)
+        self.assertIn("high", output)
 
     def test_list_color_medium_priority(self):
         task_tracker.cmd_add("Normal task", priority="medium")
@@ -182,6 +183,7 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[33m", output)
         self.assertIn("\033[0m", output)
+        self.assertIn("medium", output)
 
     def test_list_color_low_priority(self):
         task_tracker.cmd_add("Low task", priority="low")
@@ -190,6 +192,7 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[32m", output)
         self.assertIn("\033[0m", output)
+        self.assertIn("low", output)
 
     def test_list_no_color_by_default(self):
         task_tracker.cmd_add("Any task", priority="high")
@@ -197,6 +200,44 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("\033[", output)
+
+    def test_main_color_flag(self):
+        task_tracker.cmd_add("High task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_main_no_color_overrides_color(self):
+        task_tracker.cmd_add("High task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_main_no_color_by_default(self):
+        task_tracker.cmd_add("High task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+
+class TestColorize(unittest.TestCase):
+    def test_colorize_known_priority_high(self):
+        result = task_tracker.colorize("high")
+        self.assertIn("\033[31m", result)
+        self.assertIn("high", result)
+        self.assertIn("\033[0m", result)
+
+    def test_colorize_unknown_priority_returns_plain(self):
+        result = task_tracker.colorize("urgent")
+        self.assertEqual(result, "urgent")
+        self.assertNotIn("\033[", result)
 
 
 class TestPublish(unittest.TestCase):
