@@ -116,16 +116,17 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        row_parts = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            row_parts.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
                 f"<td>{due_date}</td></tr>\n"
             )
+        rows = "".join(row_parts)
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
@@ -177,15 +178,11 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
         # --no-color overrides --color when both are supplied
         use_color = "--color" in args and "--no-color" not in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+        status, _ = parse_flag(args, "--status")
         cmd_list(status, sort_priority, sort_due, use_color)
 
     elif command == "done":
