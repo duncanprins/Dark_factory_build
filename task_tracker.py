@@ -114,16 +114,17 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        row_list = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            row_list.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
                 f"<td>{due_date}</td></tr>\n"
             )
+        rows = "".join(row_list)
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
