@@ -48,7 +48,13 @@ def cmd_add(title, priority="medium", due_date=None):
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+    task = {
+        "id": next_id(tasks),
+        "title": title,
+        "status": "open",
+        "priority": priority,
+        "due_date": due_date,
+    }
     tasks.append(task)
     save_tasks(tasks)
     due_str = f" (due: {due_date})" if due_date else ""
@@ -101,11 +107,11 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        rows = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            rows.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
@@ -114,25 +120,33 @@ def cmd_publish():
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
-            "</tr></thead>\n<tbody>\n" + rows + "</tbody>\n</table>"
+            "</tr></thead>\n<tbody>\n" + "".join(rows) + "</tbody>\n</table>"
         )
     else:
         body_content = "<p>No open tasks.</p>"
 
-    page = (
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
-        '<meta charset="UTF-8">\n<title>Open Tasks</title>\n<style>\n'
-        "body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; }\n"
-        "table { border-collapse: collapse; width: 100%; }\n"
-        "th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }\n"
-        "th { background: #f5f5f5; }\n"
-        ".high { color: #c0392b; font-weight: bold; }\n"
-        ".medium { color: #e67e22; }\n"
-        ".low { color: #27ae60; }\n"
-        "</style>\n</head>\n<body>\n"
-        f"<h1>Open Tasks</h1>\n{body_content}\n"
-        "</body>\n</html>\n"
-    )
+    page = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Open Tasks</title>
+<style>
+body {{ font-family: sans-serif; max-width: 800px; margin: 2rem auto; }}
+table {{ border-collapse: collapse; width: 100%; }}
+th, td {{ border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }}
+th {{ background: #f5f5f5; }}
+.high {{ color: #c0392b; font-weight: bold; }}
+.medium {{ color: #e67e22; }}
+.low {{ color: #27ae60; }}
+</style>
+</head>
+<body>
+<h1>Open Tasks</h1>
+{body_content}
+</body>
+</html>
+"""
 
     Path("tasks.html").write_text(page)
     count = len(open_tasks)
