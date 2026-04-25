@@ -14,8 +14,9 @@ ANSI_COLORS = {"high": "\033[91m", "medium": "\033[93m", "low": "\033[92m", "res
 
 def colorize(priority):
     color = ANSI_COLORS.get(priority, "")
-    reset = ANSI_COLORS["reset"]
-    return f"{color}[{priority}]{reset}"
+    if not color:
+        return f"[{priority}]"
+    return f"{color}[{priority}]{ANSI_COLORS['reset']}"
 
 
 def parse_flag(args, flag):

@@ -195,6 +195,50 @@ class TestTaskTracker(unittest.TestCase):
         self.assertIn("[high]", output)
 
 
+class TestColorize(unittest.TestCase):
+    def test_high_is_red(self):
+        result = task_tracker.colorize("high")
+        self.assertIn("\033[91m", result)
+        self.assertIn("[high]", result)
+        self.assertIn("\033[0m", result)
+
+    def test_medium_is_yellow(self):
+        result = task_tracker.colorize("medium")
+        self.assertIn("\033[93m", result)
+        self.assertIn("[medium]", result)
+
+    def test_low_is_green(self):
+        result = task_tracker.colorize("low")
+        self.assertIn("\033[92m", result)
+        self.assertIn("[low]", result)
+
+    def test_unknown_priority_no_ansi(self):
+        result = task_tracker.colorize("urgent")
+        self.assertNotIn("\033[", result)
+        self.assertIn("[urgent]", result)
+
+
+class TestMainColorFlag(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks_main.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_main_color_flag_passed_to_cmd_list(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color"]):
+            with patch("sys.stdout") as mock_stdout:
+                mock_stdout.isatty.return_value = True
+                with patch("builtins.print") as mock_print:
+                    task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
