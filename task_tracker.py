@@ -98,11 +98,11 @@ def cmd_publish():
     open_tasks.sort(key=lambda t: PRIORITY_RANK.get(t.get("priority", "medium"), 1))
 
     if open_tasks:
-        rows = ""
+        row_parts = []
         for t in open_tasks:
             priority = t.get("priority", "medium")
             due_date = html.escape(t.get("due_date") or "\u2014")
-            rows += (
+            row_parts.append(
                 f'<tr><td>{t["id"]}</td>'
                 f"<td>{html.escape(t['title'])}</td>"
                 f'<td class="{priority}">{priority}</td>'
@@ -111,7 +111,7 @@ def cmd_publish():
         body_content = (
             "<table>\n<thead><tr>"
             "<th>ID</th><th>Title</th><th>Priority</th><th>Due Date</th>"
-            "</tr></thead>\n<tbody>\n" + rows + "</tbody>\n</table>"
+            "</tr></thead>\n<tbody>\n" + "".join(row_parts) + "</tbody>\n</table>"
         )
     else:
         body_content = "<p>No open tasks.</p>"
@@ -152,8 +152,7 @@ def main():
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")
-        if priority is None:
-            priority = "medium"
+        priority = priority or "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
         cmd_add(title, priority, due_date)
