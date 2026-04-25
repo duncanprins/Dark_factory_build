@@ -243,5 +243,65 @@ class TestPublish(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", content)
 
 
+class TestColor(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_color_flag_no_crash(self):
+        task_tracker.cmd_add("Test task", priority="high")
+        with patch("builtins.print"):
+            task_tracker.cmd_list(use_color=True)
+
+    def test_color_high_priority_contains_ansi(self):
+        task_tracker.cmd_add("High task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(use_color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+    def test_color_medium_priority_contains_ansi(self):
+        task_tracker.cmd_add("Medium task", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(use_color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m", output)
+
+    def test_color_low_priority_contains_ansi(self):
+        task_tracker.cmd_add("Low task", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(use_color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m", output)
+
+    def test_no_color_flag_plain_output(self):
+        task_tracker.cmd_add("Plain task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(use_color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_colorize_returns_plain_when_disabled(self):
+        result = task_tracker.colorize("text", "\033[31m", False)
+        self.assertEqual(result, "text")
+
+    def test_colorize_wraps_when_enabled(self):
+        result = task_tracker.colorize("text", "\033[31m", True)
+        self.assertEqual(result, "\033[31mtext\033[0m")
+
+    def test_main_color_flag_stripped(self):
+        task_tracker.cmd_add("Color test task", priority="high")
+        with patch.object(sys, "argv", ["task_tracker.py", "--color", "list"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+
+
 if __name__ == "__main__":
     unittest.main()
