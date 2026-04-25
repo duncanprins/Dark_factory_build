@@ -168,6 +168,28 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+    def test_list_empty_file_prints_no_tasks(self):
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_with("No tasks found.")
+
+    def test_load_tasks_empty_file_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text("")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_null_content_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text("null")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+    def test_load_tasks_invalid_json_returns_empty_list(self):
+        task_tracker.TASKS_FILE.write_text("{invalid}")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")

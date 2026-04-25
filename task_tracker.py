@@ -26,7 +26,16 @@ def parse_flag(args, flag):
 def load_tasks():
     if not TASKS_FILE.exists():
         return []
-    return json.loads(TASKS_FILE.read_text())
+    text = TASKS_FILE.read_text().strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return data
 
 
 def save_tasks(tasks):
