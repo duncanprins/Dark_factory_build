@@ -29,6 +29,9 @@ def load_tasks():
     try:
         data = json.loads(TASKS_FILE.read_text())
     except json.JSONDecodeError:
+        print(f"Warning: {TASKS_FILE} is not valid JSON; treating as empty.", file=sys.stderr)
+        return []
+    except OSError:
         return []
     return data if isinstance(data, list) else []
 

@@ -50,6 +50,30 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list(status="open")
         self.assertEqual(mock_print.call_count, 1)
 
+    def test_list_empty_file(self):
+        """task list should print 'No tasks found.' when tasks.json exists but is empty."""
+        task_tracker.TASKS_FILE.write_text("")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_any_call("No tasks found.")
+
+    def test_list_null_json_file(self):
+        """task list should print 'No tasks found.' when tasks.json contains JSON null."""
+        task_tracker.TASKS_FILE.write_text("null")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list()
+        mock_print.assert_called_once_with("No tasks found.")
+
+    def test_load_tasks_returns_empty_list_for_empty_file(self):
+        """load_tasks() should return [] directly when file is empty (JSONDecodeError)."""
+        task_tracker.TASKS_FILE.write_text("")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_load_tasks_returns_empty_list_for_null_json(self):
+        """load_tasks() should return [] directly when file contains JSON null."""
+        task_tracker.TASKS_FILE.write_text("null")
+        self.assertEqual(task_tracker.load_tasks(), [])
+
     def test_done(self):
         task_tracker.cmd_add("Complete me")
         task_tracker.cmd_done(1)
@@ -60,20 +84,6 @@ class TestTaskTracker(unittest.TestCase):
         with patch("builtins.print") as mock_print:
             task_tracker.cmd_done(99)
         mock_print.assert_called_with("Task #99 not found.")
-
-    def test_list_empty_file(self):
-        """task list should print 'No tasks found.' when tasks.json exists but is empty."""
-        task_tracker.TASKS_FILE.write_text("")
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list()
-        mock_print.assert_called_once_with("No tasks found.")
-
-    def test_list_null_json_file(self):
-        """task list should print 'No tasks found.' when tasks.json contains JSON null."""
-        task_tracker.TASKS_FILE.write_text("null")
-        with patch("builtins.print") as mock_print:
-            task_tracker.cmd_list()
-        mock_print.assert_called_once_with("No tasks found.")
 
     def test_delete(self):
         task_tracker.cmd_add("Delete me")
