@@ -168,6 +168,42 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+    def test_colorize_with_color_enabled(self):
+        result = task_tracker.colorize("high", use_color=True)
+        self.assertIn("\033[31m", result)
+        self.assertIn("high", result)
+        self.assertIn("\033[0m", result)
+
+    def test_colorize_without_color(self):
+        result = task_tracker.colorize("high", use_color=False)
+        self.assertEqual(result, "high")
+
+    def test_colorize_medium_color(self):
+        result = task_tracker.colorize("medium", use_color=True)
+        self.assertIn("\033[33m", result)
+
+    def test_colorize_low_color(self):
+        result = task_tracker.colorize("low", use_color=True)
+        self.assertIn("\033[32m", result)
+
+    def test_list_with_color_wraps_priority(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("high", output)
+        self.assertIn("\033[0m", output)
+
+    def test_list_without_color_no_ansi(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+        self.assertIn("[high]", output)
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
