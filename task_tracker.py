@@ -10,11 +10,12 @@ from pathlib import Path
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
+ANSI_RESET = "\033[0m"
+
 ANSI_COLORS = {
     "high": "\033[91m",    # bright red
     "medium": "\033[93m",  # bright yellow
     "low": "\033[92m",     # bright green
-    "reset": "\033[0m",
 }
 
 
@@ -23,7 +24,7 @@ def colorize(text, color_key):
     start = ANSI_COLORS.get(color_key, "")
     if not start:
         return text
-    return f"{start}{text}{ANSI_COLORS['reset']}"
+    return f"{start}{text}{ANSI_RESET}"
 
 
 def parse_flag(args, flag):
@@ -68,6 +69,7 @@ def cmd_add(title, priority="medium", due_date=None):
 
 
 def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
+    """Print filtered/sorted task list. Pass color=True to ANSI-colorize priority labels."""
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -178,6 +180,7 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        # --no-color overrides --color when both are supplied
         use_color = "--color" in args and "--no-color" not in args
         if "--status" in args:
             idx = args.index("--status")
