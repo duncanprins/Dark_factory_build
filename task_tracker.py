@@ -9,7 +9,7 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
-ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m"}
+ANSI_COLORS = {"high": "\033[31m", "medium": "\033[33m", "low": "\033[32m"}  # red, yellow, green
 ANSI_RESET = "\033[0m"
 
 
@@ -26,6 +26,7 @@ def parse_flag(args, flag):
 
 
 def colorize(priority, use_color):
+    """Wrap priority string in ANSI color codes. Returns plain priority if use_color is False or priority is unknown."""
     if not use_color:
         return priority
     color = ANSI_COLORS.get(priority, "")

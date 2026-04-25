@@ -203,6 +203,21 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("\033[", output)
         self.assertIn("[high]", output)
 
+    def test_colorize_unknown_priority_no_ansi(self):
+        # Unknown priority should return plain string, not crash or leak ANSI
+        result = task_tracker.colorize("critical", use_color=True)
+        self.assertEqual(result, "critical")
+        self.assertNotIn("\033[", result)
+
+    def test_main_color_overridden_by_no_color(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("sys.argv", ["task_tracker.py", "list", "--color", "--no-color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+        self.assertIn("[high]", output)
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
