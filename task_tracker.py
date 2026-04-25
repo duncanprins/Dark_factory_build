@@ -54,7 +54,13 @@ def cmd_add(title, priority="medium", due_date=None):
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+    task = {
+        "id": next_id(tasks),
+        "title": title,
+        "status": "open",
+        "priority": priority,
+        "due_date": due_date,
+    }
     tasks.append(task)
     save_tasks(tasks)
     due_str = f" (due: {due_date})" if due_date else ""
@@ -169,14 +175,10 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
+        status, _ = parse_flag(args[1:], "--status")
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
         use_color = "--color" in args and "--no-color" not in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
         cmd_list(status, sort_priority, sort_due, use_color)
 
     elif command == "done":
