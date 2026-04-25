@@ -182,6 +182,34 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list(color=True)
         output = mock_print.call_args_list[0][0][0]
         self.assertIn("\033[33m", output)
+        self.assertIn("[medium]", output)
+        self.assertIn("\033[0m", output)
+
+    def test_list_color_low_priority(self):
+        task_tracker.cmd_add("Nice to have", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m", output)
+        self.assertIn("[low]", output)
+        self.assertIn("\033[0m", output)
+
+    def test_list_color_unknown_priority_no_ansi(self):
+        task_tracker.save_tasks([{"id": 1, "title": "Weird task", "status": "open", "priority": "critical"}])
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+        self.assertIn("[critical]", output)
+
+    def test_main_list_color_flag(self):
+        task_tracker.cmd_add("Color test task", priority="high")
+        with patch("sys.argv", ["task", "list", "--color"]):
+            with patch("builtins.print") as mock_print:
+                task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[31m", output)
+        self.assertIn("\033[0m", output)
 
     def test_list_no_color_plain_text(self):
         task_tracker.cmd_add("Plain task", priority="high")

@@ -26,6 +26,7 @@ def parse_flag(args, flag):
 
 
 def colorize(text, color_code):
+    """Wrap text with an ANSI color_code and reset suffix."""
     return f"{color_code}{text}{ANSI_RESET}"
 
 
