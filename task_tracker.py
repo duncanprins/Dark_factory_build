@@ -26,14 +26,23 @@ def parse_flag(args, flag):
 def load_tasks():
     if not TASKS_FILE.exists():
         return []
-    content = TASKS_FILE.read_text().strip()
+    try:
+        content = TASKS_FILE.read_text().strip()
+    except (UnicodeDecodeError, OSError) as e:
+        print(f"Warning: Could not read {TASKS_FILE} ({e}) — treating as empty.", file=sys.stderr)
+        return []
     if not content:
         return []
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
+        print(f"Warning: {TASKS_FILE} contains invalid JSON — treating as empty.", file=sys.stderr)
         return []
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        if data is not None:
+            print(f"Warning: {TASKS_FILE} contains unexpected JSON type ({type(data).__name__}) — treating as empty.", file=sys.stderr)
+        return []
+    return data
 
 
 def save_tasks(tasks):

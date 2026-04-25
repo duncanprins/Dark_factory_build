@@ -188,6 +188,11 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks, [])
 
+    def test_load_tasks_dict_json(self):
+        task_tracker.TASKS_FILE.write_text('{"key": "value"}')
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks, [])
+
     def test_list_empty_file(self):
         task_tracker.TASKS_FILE.write_text("")
         with patch("builtins.print") as mock_print:
