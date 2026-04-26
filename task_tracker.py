@@ -27,8 +27,6 @@ def colorize_priority(priority, color):
     """
     if not color:
         return f"[{priority}]"
-    # Falls back to plain text for any priority not in PRIORITY_COLORS.
-    # If you add a new priority to PRIORITY_RANK, also add it here.
     code = PRIORITY_COLORS.get(priority, "")
     return f"{code}[{priority}]{ANSI_RESET}" if code else f"[{priority}]"
 
@@ -67,7 +65,13 @@ def cmd_add(title, priority="medium", due_date=None, color=False):
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+    task = {
+        "id": next_id(tasks),
+        "title": title,
+        "status": "open",
+        "priority": priority,
+        "due_date": due_date,
+    }
     tasks.append(task)
     save_tasks(tasks)
     due_str = f" (due: {due_date})" if due_date else ""
