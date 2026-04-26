@@ -19,8 +19,16 @@ PRIORITY_COLORS = {
 
 
 def colorize_priority(priority, color):
+    """Return the priority label wrapped in ANSI color codes if color is True.
+
+    Falls back to plain ``[{priority}]`` when color is False or when
+    the priority value is not present in PRIORITY_COLORS.
+    If you add a new priority to PRIORITY_RANK, also add it here.
+    """
     if not color:
         return f"[{priority}]"
+    # Falls back to plain text for any priority not in PRIORITY_COLORS.
+    # If you add a new priority to PRIORITY_RANK, also add it here.
     code = PRIORITY_COLORS.get(priority, "")
     return f"{code}[{priority}]{ANSI_RESET}" if code else f"[{priority}]"
 
