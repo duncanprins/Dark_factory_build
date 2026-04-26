@@ -167,7 +167,7 @@ def main():
             if idx + 1 < len(args):
                 status = args[idx + 1]
         if "--done" in args:
-            status = "done"
+            status = "done"  # overrides --status if both are provided
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
