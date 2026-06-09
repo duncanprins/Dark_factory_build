@@ -137,11 +137,19 @@ def cmd_publish():
     print(f"Published {count} {noun} to tasks.html")
 
 
+def cmd_count(status=None):
+    tasks = load_tasks()
+    filtered = [t for t in tasks if status is None or t["status"] == status]
+    count = len(filtered)
+    noun = "task" if count == 1 else "tasks"
+    print(f"{count} {noun}")
+
+
 def main():
     args = sys.argv[1:]
     if not args:
         print("Usage: task_tracker.py <command> [args]")
-        print("Commands: add, list, done, delete, publish")
+        print("Commands: add, list, done, delete, publish, count")
         sys.exit(1)
 
     command = args[0]
@@ -182,6 +190,14 @@ def main():
 
     elif command == "publish":
         cmd_publish()
+
+    elif command == "count":
+        status = None
+        if "--status" in args:
+            idx = args.index("--status")
+            if idx + 1 < len(args):
+                status = args[idx + 1]
+        cmd_count(status)
 
     else:
         print(f"Unknown command: {command}")

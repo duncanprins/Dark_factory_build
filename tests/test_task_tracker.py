@@ -167,6 +167,32 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_count_all(self):
+        task_tracker.cmd_add("Task A")
+        task_tracker.cmd_add("Task B")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count()
+        mock_print.assert_called_with("2 tasks")
+
+    def test_count_empty(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count()
+        mock_print.assert_called_with("0 tasks")
+
+    def test_count_singular(self):
+        task_tracker.cmd_add("Only task")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count()
+        mock_print.assert_called_with("1 task")
+
+    def test_count_by_status(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count(status="open")
+        mock_print.assert_called_with("1 task")
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
