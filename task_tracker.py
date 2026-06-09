@@ -167,13 +167,9 @@ def main():
         cmd_add(title, priority, due_date)
 
     elif command == "list":
-        status = None
+        status, _ = parse_flag(args, "--status")
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
         cmd_list(status, sort_priority, sort_due)
 
     elif command == "done":
@@ -192,11 +188,7 @@ def main():
         cmd_publish()
 
     elif command == "count":
-        status = None
-        if "--status" in args:
-            idx = args.index("--status")
-            if idx + 1 < len(args):
-                status = args[idx + 1]
+        status, _ = parse_flag(args, "--status")
         cmd_count(status)
 
     else:

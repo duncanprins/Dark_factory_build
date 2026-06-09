@@ -193,6 +193,20 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_count(status="open")
         mock_print.assert_called_with("1 task")
 
+    def test_count_by_status_done(self):
+        task_tracker.cmd_add("Open task")
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_done(2)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count(status="done")
+        mock_print.assert_called_with("1 task")
+
+    def test_count_by_status_empty(self):
+        task_tracker.cmd_add("Open task")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_count(status="done")
+        mock_print.assert_called_with("0 tasks")
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
