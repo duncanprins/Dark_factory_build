@@ -92,6 +92,12 @@ def cmd_delete(task_id):
     print(f"Deleted task #{task_id}.")
 
 
+def cmd_total():
+    tasks = load_tasks()
+    noun = "task" if len(tasks) == 1 else "tasks"
+    print(f"Total: {len(tasks)} {noun}")
+
+
 def cmd_publish():
     tasks = load_tasks()
     open_tasks = [t for t in tasks if t.get("status") == "open"]
@@ -182,6 +188,9 @@ def main():
 
     elif command == "publish":
         cmd_publish()
+
+    elif command == "total":
+        cmd_total()
 
     else:
         print(f"Unknown command: {command}")
