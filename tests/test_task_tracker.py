@@ -243,5 +243,86 @@ class TestPublish(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", content)
 
 
+class TestColorFlag(unittest.TestCase):
+    def setUp(self):
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def tearDown(self):
+        if task_tracker.TASKS_FILE.exists():
+            task_tracker.TASKS_FILE.unlink()
+
+    def test_no_color_default(self):
+        with patch("builtins.print"):
+            task_tracker.cmd_add("Plain task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=False)
+        self.assertEqual(len(mock_print.call_args_list), 1)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_color_high_priority(self):
+        task_tracker.cmd_add("Urgent task", priority="high")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[1;31m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_medium_priority(self):
+        task_tracker.cmd_add("Normal task", priority="medium")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[33m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_low_priority(self):
+        task_tracker.cmd_add("Minor task", priority="low")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_list(color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[32m", output)
+        self.assertIn("\033[0m", output)
+
+    def test_color_add_task(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Color task", priority="high", color=True)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+    def test_color_add_no_color(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Plain task", priority="high", color=False)
+        output = mock_print.call_args_list[0][0][0]
+        self.assertNotIn("\033[", output)
+
+    def test_color_flag_main_list(self):
+        task_tracker.cmd_add("Main test task", priority="high")
+        with patch("builtins.print") as mock_print, \
+             patch.object(sys, "argv", ["task_tracker.py", "list", "--color"]):
+            task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+    def test_color_flag_main_add(self):
+        with patch("builtins.print") as mock_print, \
+             patch.object(sys, "argv", ["task_tracker.py", "add", "Color task",
+                                        "--priority", "high", "--color"]):
+            task_tracker.main()
+        output = mock_print.call_args_list[0][0][0]
+        self.assertIn("\033[", output)
+
+    def test_colorize_unknown_priority_returns_plain(self):
+        result = task_tracker.colorize_priority("critical", color=True)
+        self.assertEqual(result, "[critical]")
+        self.assertNotIn("\033[", result)
+
+    def test_colorize_unknown_priority_no_color(self):
+        result = task_tracker.colorize_priority("critical", color=False)
+        self.assertEqual(result, "[critical]")
+
+
 if __name__ == "__main__":
     unittest.main()

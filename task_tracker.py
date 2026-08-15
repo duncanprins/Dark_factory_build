@@ -10,6 +10,26 @@ from pathlib import Path
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
+ANSI_RESET = "\033[0m"
+PRIORITY_COLORS = {
+    "high":   "\033[1;31m",
+    "medium": "\033[33m",
+    "low":    "\033[32m",
+}
+
+
+def colorize_priority(priority, color):
+    """Return the priority label wrapped in ANSI color codes if color is True.
+
+    Falls back to plain ``[{priority}]`` when color is False or when
+    the priority value is not present in PRIORITY_COLORS.
+    If you add a new priority to PRIORITY_RANK, also add it here.
+    """
+    if not color:
+        return f"[{priority}]"
+    code = PRIORITY_COLORS.get(priority, "")
+    return f"{code}[{priority}]{ANSI_RESET}" if code else f"[{priority}]"
+
 
 def parse_flag(args, flag):
     """Extract a flag value from args list. Returns (value_or_none, remaining_args)."""
@@ -37,7 +57,7 @@ def next_id(tasks):
     return max((t["id"] for t in tasks), default=0) + 1
 
 
-def cmd_add(title, priority="medium", due_date=None):
+def cmd_add(title, priority="medium", due_date=None, color=False):
     if due_date is not None:
         try:
             datetime.date.fromisoformat(due_date)
@@ -45,14 +65,20 @@ def cmd_add(title, priority="medium", due_date=None):
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
     tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+    task = {
+        "id": next_id(tasks),
+        "title": title,
+        "status": "open",
+        "priority": priority,
+        "due_date": due_date,
+    }
     tasks.append(task)
     save_tasks(tasks)
     due_str = f" (due: {due_date})" if due_date else ""
-    print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
+    print(f"Added task #{task['id']}: {title} {colorize_priority(priority, color)}{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False, sort_due=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False, color=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
     if not filtered:
@@ -67,7 +93,7 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
         due_str = f" (due: {due_date})" if due_date else ""
-        print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
+        print(f"[{mark}] #{t['id']}: {t['title']} {colorize_priority(priority, color)}{due_str}")
 
 
 def cmd_done(task_id):
@@ -139,6 +165,9 @@ def cmd_publish():
 
 def main():
     args = sys.argv[1:]
+    color = "--color" in args
+    if color:
+        args = [a for a in args if a != "--color"]
     if not args:
         print("Usage: task_tracker.py <command> [args]")
         print("Commands: add, list, done, delete, publish")
@@ -156,7 +185,7 @@ def main():
             priority = "medium"
         due_date, add_args = parse_flag(add_args, "--due-date")
         title = " ".join(add_args)
-        cmd_add(title, priority, due_date)
+        cmd_add(title, priority, due_date, color=color)
 
     elif command == "list":
         status = None
@@ -166,7 +195,7 @@ def main():
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority, sort_due)
+        cmd_list(status, sort_priority, sort_due, color=color)
 
     elif command == "done":
         if len(args) < 2:
