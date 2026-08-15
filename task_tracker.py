@@ -52,9 +52,12 @@ def cmd_add(title, priority="medium", due_date=None):
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
 
-def cmd_list(status=None, sort_priority=False, sort_due=False):
+def cmd_list(status=None, sort_priority=False, sort_due=False, overdue_only=False):
     tasks = load_tasks()
     filtered = [t for t in tasks if status is None or t["status"] == status]
+    if overdue_only:
+        today = datetime.date.today().isoformat()
+        filtered = [t for t in filtered if t.get("due_date") and t["due_date"] < today]
     if not filtered:
         print("No tasks found.")
         return
@@ -66,7 +69,7 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
         mark = "x" if t["status"] == "done" else " "
         priority = t.get("priority", "medium")
         due_date = t.get("due_date")
-        due_str = f" (due: {due_date})" if due_date else ""
+        due_str = f" (due: {due_date or 'none'})"
         print(f"[{mark}] #{t['id']}: {t['title']} [{priority}]{due_str}")
 
 
@@ -162,11 +165,12 @@ def main():
         status = None
         sort_priority = "--priority" in args
         sort_due = "--sort-due" in args
+        overdue_only = "--overdue" in args
         if "--status" in args:
             idx = args.index("--status")
             if idx + 1 < len(args):
                 status = args[idx + 1]
-        cmd_list(status, sort_priority, sort_due)
+        cmd_list(status, sort_priority, sort_due, overdue_only)
 
     elif command == "done":
         if len(args) < 2:
