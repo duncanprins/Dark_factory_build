@@ -1,5 +1,7 @@
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -166,6 +168,28 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
+
+    def test_concurrent_cli_adds_keep_unique_ids(self):
+        script = Path(task_tracker.__file__).resolve()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            processes = [
+                subprocess.Popen(
+                    [sys.executable, str(script), "add", f"Concurrent task {i}"],
+                    cwd=tmpdir,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                for i in range(20)
+            ]
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=10)
+                self.assertEqual(process.returncode, 0, msg=f"stdout={stdout}\nstderr={stderr}")
+
+            tasks = json.loads((Path(tmpdir) / "tasks.json").read_text())
+            ids = sorted(task["id"] for task in tasks)
+            self.assertEqual(len(tasks), 20)
+            self.assertEqual(ids, list(range(1, 21)))
 
 
 class TestPublish(unittest.TestCase):

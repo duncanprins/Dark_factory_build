@@ -2,9 +2,11 @@
 """Task Tracker CLI — minimal task management via JSON storage."""
 
 import datetime
+import fcntl
 import html
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
@@ -23,14 +25,49 @@ def parse_flag(args, flag):
     return value, remaining
 
 
-def load_tasks():
-    if not TASKS_FILE.exists():
+@contextmanager
+def locked_tasks_file(exclusive=False):
+    TASKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with TASKS_FILE.open("a+", encoding="utf-8") as file:
+        lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        fcntl.flock(file.fileno(), lock_type)
+        try:
+            file.seek(0)
+            yield file
+        finally:
+            fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+
+def read_tasks_from_file(file):
+    content = file.read()
+    if not content.strip():
         return []
-    return json.loads(TASKS_FILE.read_text())
+    return json.loads(content)
+
+
+def write_tasks_to_file(file, tasks):
+    file.seek(0)
+    file.truncate()
+    json.dump(tasks, file, indent=2)
+    file.flush()
+
+
+def load_tasks():
+    with locked_tasks_file() as file:
+        return read_tasks_from_file(file)
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    with locked_tasks_file(exclusive=True) as file:
+        write_tasks_to_file(file, tasks)
+
+
+def update_tasks(mutator):
+    with locked_tasks_file(exclusive=True) as file:
+        tasks = read_tasks_from_file(file)
+        result = mutator(tasks)
+        write_tasks_to_file(file, tasks)
+        return result
 
 
 def next_id(tasks):
@@ -44,10 +81,12 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    def add_task(tasks):
+        task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+        tasks.append(task)
+        return task
+
+    task = update_tasks(add_task)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -71,25 +110,31 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
 
 
 def cmd_done(task_id):
-    tasks = load_tasks()
-    for t in tasks:
-        if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
-            print(f"Marked #{task_id} as done.")
-            return
+    def mark_done(tasks):
+        for t in tasks:
+            if t["id"] == task_id:
+                t["status"] = "done"
+                return True
+        return False
+
+    if update_tasks(mark_done):
+        print(f"Marked #{task_id} as done.")
+        return
     print(f"Task #{task_id} not found.")
 
 
 def cmd_delete(task_id):
-    tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
-        print(f"Task #{task_id} not found.")
+    def delete_task(tasks):
+        for index, task in enumerate(tasks):
+            if task["id"] == task_id:
+                del tasks[index]
+                return True
+        return False
+
+    if update_tasks(delete_task):
+        print(f"Deleted task #{task_id}.")
         return
-    save_tasks(tasks)
-    print(f"Deleted task #{task_id}.")
+    print(f"Task #{task_id} not found.")
 
 
 def cmd_publish():
