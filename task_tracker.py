@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Task Tracker CLI — minimal task management via JSON storage."""
+"""Task Tracker CLI — minimal task management via append-only JSONL storage."""
 
 import datetime
+import fcntl
 import html
 import json
+import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
-TASKS_FILE = Path("tasks.json")
+TASKS_FILE = Path("tasks.jsonl")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -23,14 +26,83 @@ def parse_flag(args, flag):
     return value, remaining
 
 
-def load_tasks():
-    if not TASKS_FILE.exists():
+def legacy_tasks_file():
+    if TASKS_FILE.suffix == ".jsonl":
+        return TASKS_FILE.with_suffix(".json")
+    return TASKS_FILE
+
+
+def lock_file():
+    return TASKS_FILE.with_name(f"{TASKS_FILE.name}.lock")
+
+
+@contextmanager
+def storage_lock():
+    lock_path = lock_file()
+    with lock_path.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def load_legacy_tasks():
+    path = legacy_tasks_file()
+    if not path.exists():
         return []
-    return json.loads(TASKS_FILE.read_text())
+    return json.loads(path.read_text())
+
+
+def apply_event(tasks, event):
+    event_type = event.get("event")
+    if event_type == "snapshot":
+        return list(event.get("tasks", []))
+    if event_type == "add":
+        tasks.append(event["task"])
+    elif event_type == "done":
+        for task in tasks:
+            if task["id"] == event["id"]:
+                task["status"] = "done"
+                break
+    elif event_type == "delete":
+        tasks = [task for task in tasks if task["id"] != event["id"]]
+    return tasks
+
+
+def replay_events(tasks):
+    if not TASKS_FILE.exists():
+        return tasks
+    content = TASKS_FILE.read_text()
+    if not content.strip():
+        return tasks
+    if content.lstrip().startswith("["):
+        return json.loads(content)
+    for line in content.splitlines():
+        if line.strip():
+            tasks = apply_event(tasks, json.loads(line))
+    return tasks
+
+
+def load_tasks():
+    base_tasks = []
+    if TASKS_FILE.suffix != ".json":
+        base_tasks = load_legacy_tasks()
+    return replay_events(base_tasks)
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    append_event({"event": "snapshot", "tasks": tasks})
+
+
+def append_event(event):
+    line = json.dumps(event, separators=(",", ":")) + "\n"
+    TASKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    with os.fdopen(os.open(TASKS_FILE, flags, 0o644), "a") as file:
+        file.write(line)
+        file.flush()
+        os.fsync(file.fileno())
 
 
 def next_id(tasks):
@@ -44,10 +116,10 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    with storage_lock():
+        tasks = load_tasks()
+        task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+        append_event({"event": "add", "task": task})
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -71,25 +143,24 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
 
 
 def cmd_done(task_id):
-    tasks = load_tasks()
-    for t in tasks:
-        if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
-            print(f"Marked #{task_id} as done.")
-            return
+    with storage_lock():
+        tasks = load_tasks()
+        for t in tasks:
+            if t["id"] == task_id:
+                append_event({"event": "done", "id": task_id})
+                print(f"Marked #{task_id} as done.")
+                return
     print(f"Task #{task_id} not found.")
 
 
 def cmd_delete(task_id):
-    tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
-        print(f"Task #{task_id} not found.")
-        return
-    save_tasks(tasks)
-    print(f"Deleted task #{task_id}.")
+    with storage_lock():
+        tasks = load_tasks()
+        if any(t["id"] == task_id for t in tasks):
+            append_event({"event": "delete", "id": task_id})
+            print(f"Deleted task #{task_id}.")
+            return
+    print(f"Task #{task_id} not found.")
 
 
 def cmd_publish():
