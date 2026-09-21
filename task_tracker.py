@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Task Tracker CLI — minimal task management via JSON storage."""
+"""Task Tracker CLI - minimal task management via append-only JSONL storage."""
 
 import datetime
 import html
 import json
+import os
 import sys
+import uuid
 from pathlib import Path
 
-TASKS_FILE = Path("tasks.json")
+TASKS_FILE = Path("tasks.jsonl")
+LEGACY_TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -23,14 +26,83 @@ def parse_flag(args, flag):
     return value, remaining
 
 
-def load_tasks():
-    if not TASKS_FILE.exists():
+def _read_json_tasks(path):
+    if not path.exists():
         return []
-    return json.loads(TASKS_FILE.read_text())
+    content = path.read_text().strip()
+    if not content:
+        return []
+    return json.loads(content)
+
+
+def _append_event(event):
+    line = json.dumps(event, separators=(",", ":")) + "\n"
+    fd = os.open(TASKS_FILE, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o666)
+    try:
+        os.write(fd, line.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def _load_event_log_tasks(include_event_ids=False):
+    tasks = []
+    if TASKS_FILE == Path("tasks.jsonl") and LEGACY_TASKS_FILE.exists():
+        tasks.extend(_read_json_tasks(LEGACY_TASKS_FILE))
+
+    if not TASKS_FILE.exists():
+        return tasks
+
+    content = TASKS_FILE.read_text().strip()
+    if not content:
+        return tasks
+
+    # Older callers/tests may still point TASKS_FILE at a JSON array.
+    if content.startswith("["):
+        return json.loads(content)
+
+    next_task_id = max((t["id"] for t in tasks), default=0) + 1
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line)
+        event_type = event.get("type")
+
+        if event_type == "snapshot":
+            tasks = event.get("tasks", [])
+            next_task_id = max((t["id"] for t in tasks), default=0) + 1
+        elif event_type == "add":
+            task = {
+                "id": next_task_id,
+                "title": event["title"],
+                "status": "open",
+                "priority": event.get("priority", "medium"),
+                "due_date": event.get("due_date"),
+            }
+            if include_event_ids:
+                task["_event_id"] = event.get("event_id")
+            tasks.append(task)
+            next_task_id += 1
+        elif event_type == "done":
+            for task in tasks:
+                if task["id"] == event.get("task_id"):
+                    task["status"] = "done"
+                    break
+        elif event_type == "delete":
+            tasks = [task for task in tasks if task["id"] != event.get("task_id")]
+
+    return tasks
+
+
+def load_tasks():
+    tasks = _load_event_log_tasks()
+    for task in tasks:
+        task.pop("_event_id", None)
+    return tasks
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    event = {"type": "snapshot", "tasks": tasks}
+    TASKS_FILE.write_text(json.dumps(event, separators=(",", ":")) + "\n")
 
 
 def next_id(tasks):
@@ -44,10 +116,10 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    event_id = uuid.uuid4().hex
+    _append_event({"type": "add", "event_id": event_id, "title": title, "priority": priority, "due_date": due_date})
+    tasks = _load_event_log_tasks(include_event_ids=True)
+    task = next(t for t in tasks if t.get("_event_id") == event_id)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -74,8 +146,7 @@ def cmd_done(task_id):
     tasks = load_tasks()
     for t in tasks:
         if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
+            _append_event({"type": "done", "task_id": task_id})
             print(f"Marked #{task_id} as done.")
             return
     print(f"Task #{task_id} not found.")
@@ -83,12 +154,10 @@ def cmd_done(task_id):
 
 def cmd_delete(task_id):
     tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
+    if not any(t["id"] == task_id for t in tasks):
         print(f"Task #{task_id} not found.")
         return
-    save_tasks(tasks)
+    _append_event({"type": "delete", "task_id": task_id})
     print(f"Deleted task #{task_id}.")
 
 

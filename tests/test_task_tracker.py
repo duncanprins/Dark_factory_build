@@ -1,5 +1,7 @@
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -166,6 +168,50 @@ class TestTaskTracker(unittest.TestCase):
             task_tracker.cmd_list()
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
+
+    def test_add_uses_jsonl_events(self):
+        task_tracker.cmd_add("Logged task", priority="high", due_date="2026-05-01")
+        line = task_tracker.TASKS_FILE.read_text().strip()
+        event = json.loads(line)
+        self.assertEqual(event["type"], "add")
+        self.assertEqual(event["title"], "Logged task")
+        self.assertEqual(event["priority"], "high")
+        self.assertEqual(event["due_date"], "2026-05-01")
+
+    def test_replays_done_and_delete_events(self):
+        task_tracker.cmd_add("Done task")
+        task_tracker.cmd_add("Deleted task")
+        task_tracker.cmd_done(1)
+        task_tracker.cmd_delete(2)
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], 1)
+        self.assertEqual(tasks[0]["status"], "done")
+
+    def test_loads_legacy_json_array(self):
+        task_tracker.TASKS_FILE.write_text(json.dumps([{"id": 1, "title": "Old task", "status": "open"}]))
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["title"], "Old task")
+
+    def test_concurrent_adds_do_not_overwrite_tasks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tasks_file = Path(temp_dir) / "tasks.jsonl"
+            script = (
+                "import pathlib, sys;"
+                f"sys.path.insert(0, {str(Path(__file__).parent.parent)!r});"
+                "import task_tracker;"
+                f"task_tracker.TASKS_FILE = pathlib.Path({str(tasks_file)!r});"
+                "task_tracker.cmd_add('Concurrent task')"
+            )
+            processes = [subprocess.Popen([sys.executable, "-c", script]) for _ in range(8)]
+            for process in processes:
+                self.assertEqual(process.wait(timeout=5), 0)
+
+            task_tracker.TASKS_FILE = tasks_file
+            tasks = task_tracker.load_tasks()
+            ids = sorted(task["id"] for task in tasks)
+            self.assertEqual(len(tasks), 8)
+            self.assertEqual(ids, list(range(1, 9)))
 
 
 class TestPublish(unittest.TestCase):
