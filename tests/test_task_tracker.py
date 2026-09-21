@@ -1,5 +1,7 @@
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,13 +12,11 @@ import task_tracker
 
 class TestTaskTracker(unittest.TestCase):
     def setUp(self):
-        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        task_tracker.TASKS_FILE = Path(self.temp_dir.name) / "tasks.jsonl"
 
     def tearDown(self):
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.temp_dir.cleanup()
 
     def test_add_task(self):
         task_tracker.cmd_add("Do something")
@@ -26,6 +26,14 @@ class TestTaskTracker(unittest.TestCase):
         self.assertEqual(tasks[0]["status"], "open")
         self.assertEqual(tasks[0]["id"], 1)
         self.assertEqual(tasks[0]["priority"], "medium")
+
+    def test_add_task_appends_jsonl_event(self):
+        task_tracker.cmd_add("Logged task")
+        lines = task_tracker.TASKS_FILE.read_text().splitlines()
+        self.assertEqual(len(lines), 1)
+        event = json.loads(lines[0])
+        self.assertEqual(event["event"], "add")
+        self.assertEqual(event["task"]["title"], "Logged task")
 
     def test_add_multiple_tasks(self):
         task_tracker.cmd_add("First task")
@@ -55,6 +63,8 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_done(1)
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks[0]["status"], "done")
+        events = [json.loads(line)["event"] for line in task_tracker.TASKS_FILE.read_text().splitlines()]
+        self.assertEqual(events, ["add", "done"])
 
     def test_done_nonexistent(self):
         with patch("builtins.print") as mock_print:
@@ -66,6 +76,8 @@ class TestTaskTracker(unittest.TestCase):
         task_tracker.cmd_delete(1)
         tasks = task_tracker.load_tasks()
         self.assertEqual(len(tasks), 0)
+        events = [json.loads(line)["event"] for line in task_tracker.TASKS_FILE.read_text().splitlines()]
+        self.assertEqual(events, ["add", "delete"])
 
     def test_delete_nonexistent(self):
         with patch("builtins.print") as mock_print:
@@ -167,16 +179,50 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_loads_legacy_tasks_json_before_events(self):
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        legacy_file.write_text(
+            json.dumps([{"id": 1, "title": "Old task", "status": "open", "priority": "low", "due_date": None}])
+        )
+        task_tracker.cmd_add("New task")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual([task["title"] for task in tasks], ["Old task", "New task"])
+        self.assertEqual([task["id"] for task in tasks], [1, 2])
+
+    def test_concurrent_adds_keep_all_tasks_with_unique_ids(self):
+        script = Path(task_tracker.__file__).resolve()
+        processes = [
+            subprocess.Popen(
+                [sys.executable, str(script), "add", f"Task {idx}"],
+                cwd=self.temp_dir.name,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            for idx in range(8)
+        ]
+        for process in processes:
+            stdout, stderr = process.communicate(timeout=5)
+            self.assertEqual(process.returncode, 0, msg=f"stdout={stdout}\nstderr={stderr}")
+
+        old_tasks_file = task_tracker.TASKS_FILE
+        task_tracker.TASKS_FILE = Path(self.temp_dir.name) / "tasks.jsonl"
+        try:
+            tasks = task_tracker.load_tasks()
+        finally:
+            task_tracker.TASKS_FILE = old_tasks_file
+
+        self.assertEqual(len(tasks), 8)
+        self.assertEqual(sorted(task["id"] for task in tasks), list(range(1, 9)))
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
-        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        task_tracker.TASKS_FILE = Path(self.temp_dir.name) / "tasks.jsonl"
 
     def tearDown(self):
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.temp_dir.cleanup()
         html_file = Path("tasks.html")
         if html_file.exists():
             html_file.unlink()

@@ -1,13 +1,16 @@
 # Dark Factory Build — Task Tracker CLI
 
-A simple Python CLI tool for managing tasks in a local JSON file.
+A simple Python CLI tool for managing tasks in a local append-only JSONL file.
 Built incrementally by the AI Dark Factory (Archon-based coding factory).
 
 ## Features
 
 - Add, list, complete, and delete tasks
-- Persist tasks to a local JSON file
+- Persist tasks to a local `tasks.jsonl` event log
 - Filter tasks by status
+
+Existing `tasks.json` data is loaded as a legacy base when `tasks.jsonl`
+does not yet contain replacement events.
 
 ## Usage
 
