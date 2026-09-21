@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Task Tracker CLI — minimal task management via JSON storage."""
+"""Task Tracker CLI — minimal task management via a JSONL event log."""
 
 import datetime
+import fcntl
 import html
 import json
 import sys
@@ -23,14 +24,73 @@ def parse_flag(args, flag):
     return value, remaining
 
 
+def tasks_log_file():
+    return TASKS_FILE.with_suffix(".jsonl")
+
+
+def _replay_events(lines):
+    tasks = []
+    for line in lines:
+        if not line.strip():
+            continue
+        event = json.loads(line)
+        op = event.get("op")
+        if op == "snapshot":
+            tasks = event["tasks"]
+        elif op == "add":
+            tasks.append(event["task"])
+        elif op == "done":
+            for task in tasks:
+                if task["id"] == event["id"]:
+                    task["status"] = "done"
+                    break
+        elif op == "delete":
+            tasks = [task for task in tasks if task["id"] != event["id"]]
+    return tasks
+
+
+def _read_tasks_from_store(log_file):
+    log_file.seek(0)
+    lines = log_file.readlines()
+    if lines:
+        return _replay_events(lines)
+    if TASKS_FILE.exists():
+        return json.loads(TASKS_FILE.read_text())
+    return []
+
+
+def _append_event(log_file, event):
+    log_file.seek(0, 2)
+    log_file.write(json.dumps(event, separators=(",", ":")) + "\n")
+    log_file.flush()
+
+
+def _migrate_legacy_json(log_file, tasks):
+    log_file.seek(0, 2)
+    if log_file.tell() == 0 and TASKS_FILE.exists():
+        _append_event(log_file, {"op": "snapshot", "tasks": tasks})
+
+
 def load_tasks():
-    if not TASKS_FILE.exists():
-        return []
-    return json.loads(TASKS_FILE.read_text())
+    log_path = tasks_log_file()
+    with log_path.open("a+", encoding="utf-8") as log_file:
+        fcntl.flock(log_file, fcntl.LOCK_SH)
+        try:
+            return _read_tasks_from_store(log_file)
+        finally:
+            fcntl.flock(log_file, fcntl.LOCK_UN)
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    log_path = tasks_log_file()
+    with log_path.open("a+", encoding="utf-8") as log_file:
+        fcntl.flock(log_file, fcntl.LOCK_EX)
+        try:
+            log_file.seek(0)
+            log_file.truncate()
+            _append_event(log_file, {"op": "snapshot", "tasks": tasks})
+        finally:
+            fcntl.flock(log_file, fcntl.LOCK_UN)
 
 
 def next_id(tasks):
@@ -44,10 +104,16 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    log_path = tasks_log_file()
+    with log_path.open("a+", encoding="utf-8") as log_file:
+        fcntl.flock(log_file, fcntl.LOCK_EX)
+        try:
+            tasks = _read_tasks_from_store(log_file)
+            _migrate_legacy_json(log_file, tasks)
+            task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
+            _append_event(log_file, {"op": "add", "task": task})
+        finally:
+            fcntl.flock(log_file, fcntl.LOCK_UN)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -71,25 +137,36 @@ def cmd_list(status=None, sort_priority=False, sort_due=False):
 
 
 def cmd_done(task_id):
-    tasks = load_tasks()
-    for t in tasks:
-        if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
-            print(f"Marked #{task_id} as done.")
-            return
+    log_path = tasks_log_file()
+    with log_path.open("a+", encoding="utf-8") as log_file:
+        fcntl.flock(log_file, fcntl.LOCK_EX)
+        try:
+            tasks = _read_tasks_from_store(log_file)
+            for t in tasks:
+                if t["id"] == task_id:
+                    _migrate_legacy_json(log_file, tasks)
+                    _append_event(log_file, {"op": "done", "id": task_id})
+                    print(f"Marked #{task_id} as done.")
+                    return
+        finally:
+            fcntl.flock(log_file, fcntl.LOCK_UN)
     print(f"Task #{task_id} not found.")
 
 
 def cmd_delete(task_id):
-    tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
-        print(f"Task #{task_id} not found.")
-        return
-    save_tasks(tasks)
-    print(f"Deleted task #{task_id}.")
+    log_path = tasks_log_file()
+    with log_path.open("a+", encoding="utf-8") as log_file:
+        fcntl.flock(log_file, fcntl.LOCK_EX)
+        try:
+            tasks = _read_tasks_from_store(log_file)
+            if any(t["id"] == task_id for t in tasks):
+                _migrate_legacy_json(log_file, tasks)
+                _append_event(log_file, {"op": "delete", "id": task_id})
+                print(f"Deleted task #{task_id}.")
+                return
+        finally:
+            fcntl.flock(log_file, fcntl.LOCK_UN)
+    print(f"Task #{task_id} not found.")
 
 
 def cmd_publish():
