@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Task Tracker CLI — minimal task management via JSON storage."""
+"""Task Tracker CLI — minimal task management via append-only JSONL storage."""
 
 import datetime
 import html
 import json
+import os
 import sys
+import uuid
 from pathlib import Path
 
-TASKS_FILE = Path("tasks.json")
+TASKS_FILE = Path("tasks.jsonl")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -23,18 +25,114 @@ def parse_flag(args, flag):
     return value, remaining
 
 
-def load_tasks():
+def _legacy_tasks_file():
+    if TASKS_FILE.suffix == ".jsonl":
+        return TASKS_FILE.with_suffix(".json")
+    return TASKS_FILE
+
+
+def _read_events():
     if not TASKS_FILE.exists():
+        legacy_file = _legacy_tasks_file()
+        if legacy_file.exists():
+            return [{"op": "add", "task": task, "event_id": str(uuid.uuid4())} for task in json.loads(legacy_file.read_text())]
         return []
-    return json.loads(TASKS_FILE.read_text())
+
+    events = []
+    for line in TASKS_FILE.read_text().splitlines():
+        if line.strip():
+            events.append(json.loads(line))
+    return events
+
+
+def _replay_tasks(include_event_ids=False):
+    tasks = []
+    by_id = {}
+    next_task_id = 1
+
+    for event in _read_events():
+        op = event.get("op")
+        if op == "add":
+            source = event.get("task", event)
+            task_id = source.get("id", next_task_id)
+            task = {
+                "id": task_id,
+                "title": source["title"],
+                "status": source.get("status", "open"),
+                "priority": source.get("priority", "medium"),
+                "due_date": source.get("due_date"),
+            }
+            if include_event_ids:
+                task["_event_id"] = event.get("event_id")
+            tasks.append(task)
+            by_id[task_id] = task
+            next_task_id = max(next_task_id, task_id + 1)
+        elif op == "done":
+            task = by_id.get(event.get("task_id"))
+            if task is not None:
+                task["status"] = "done"
+        elif op == "delete":
+            task = by_id.pop(event.get("task_id"), None)
+            if task is not None:
+                tasks.remove(task)
+
+    return tasks
+
+
+def load_tasks():
+    tasks = _replay_tasks()
+    for task in tasks:
+        task.pop("_event_id", None)
+    return tasks
 
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, indent=2))
+    events = []
+    for task in tasks:
+        event_id = str(uuid.uuid4())
+        events.append({"op": "add", "event_id": event_id, "task": task})
+        if task.get("status") == "done":
+            events.append({"op": "done", "task_id": task["id"]})
+    _write_events(events)
 
 
-def next_id(tasks):
-    return max((t["id"] for t in tasks), default=0) + 1
+def _write_events(events):
+    content = "".join(json.dumps(event, separators=(",", ":")) + "\n" for event in events)
+    TASKS_FILE.write_text(content)
+
+
+def _append_event(event):
+    _migrate_legacy_file()
+    line = json.dumps(event, separators=(",", ":")) + "\n"
+    flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+    fd = os.open(TASKS_FILE, flags, 0o666)
+    try:
+        os.write(fd, line.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def _migrate_legacy_file():
+    if TASKS_FILE.exists():
+        return
+
+    legacy_file = _legacy_tasks_file()
+    if not legacy_file.exists():
+        return
+
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    try:
+        fd = os.open(TASKS_FILE, flags, 0o666)
+    except FileExistsError:
+        return
+
+    try:
+        legacy_tasks = json.loads(legacy_file.read_text())
+        events = [{"op": "add", "event_id": str(uuid.uuid4()), "task": task} for task in legacy_tasks]
+        content = "".join(json.dumps(event, separators=(",", ":")) + "\n" for event in events)
+        os.write(fd, content.encode("utf-8"))
+    finally:
+        os.close(fd)
 
 
 def cmd_add(title, priority="medium", due_date=None):
@@ -44,10 +142,14 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    event_id = str(uuid.uuid4())
+    event = {
+        "op": "add",
+        "event_id": event_id,
+        "task": {"title": title, "status": "open", "priority": priority, "due_date": due_date},
+    }
+    _append_event(event)
+    task = next(t for t in _replay_tasks(include_event_ids=True) if t.get("_event_id") == event_id)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -74,8 +176,7 @@ def cmd_done(task_id):
     tasks = load_tasks()
     for t in tasks:
         if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
+            _append_event({"op": "done", "task_id": task_id})
             print(f"Marked #{task_id} as done.")
             return
     print(f"Task #{task_id} not found.")
@@ -83,12 +184,10 @@ def cmd_done(task_id):
 
 def cmd_delete(task_id):
     tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
+    if not any(t["id"] == task_id for t in tasks):
         print(f"Task #{task_id} not found.")
         return
-    save_tasks(tasks)
+    _append_event({"op": "delete", "task_id": task_id})
     print(f"Deleted task #{task_id}.")
 
 

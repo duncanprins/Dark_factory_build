@@ -10,13 +10,19 @@ import task_tracker
 
 class TestTaskTracker(unittest.TestCase):
     def setUp(self):
-        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.jsonl")
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        if legacy_file.exists():
+            legacy_file.unlink()
 
     def tearDown(self):
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        if legacy_file.exists():
+            legacy_file.unlink()
 
     def test_add_task(self):
         task_tracker.cmd_add("Do something")
@@ -167,16 +173,66 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_add_writes_append_only_jsonl_event(self):
+        task_tracker.cmd_add("Logged task", priority="high", due_date="2026-05-01")
+        lines = task_tracker.TASKS_FILE.read_text().splitlines()
+        self.assertEqual(len(lines), 1)
+        event = json.loads(lines[0])
+        self.assertEqual(event["op"], "add")
+        self.assertIn("event_id", event)
+        self.assertEqual(event["task"]["title"], "Logged task")
+        self.assertNotIn("id", event["task"])
+
+    def test_replays_add_events_in_append_order_with_unique_ids(self):
+        events = [
+            {"op": "add", "event_id": "first", "task": {"title": "First", "status": "open"}},
+            {"op": "add", "event_id": "second", "task": {"title": "Second", "status": "open"}},
+        ]
+        task_tracker._write_events(events)
+        tasks = task_tracker.load_tasks()
+        self.assertEqual([t["id"] for t in tasks], [1, 2])
+        self.assertEqual([t["title"] for t in tasks], ["First", "Second"])
+
+    def test_done_appends_without_rewriting_add_event(self):
+        task_tracker.cmd_add("Complete me")
+        task_tracker.cmd_done(1)
+        events = [json.loads(line) for line in task_tracker.TASKS_FILE.read_text().splitlines()]
+        self.assertEqual([event["op"] for event in events], ["add", "done"])
+        self.assertEqual(events[1]["task_id"], 1)
+        self.assertEqual(task_tracker.load_tasks()[0]["status"], "done")
+
+    def test_loads_legacy_tasks_json_when_log_missing(self):
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        legacy_file.write_text(json.dumps([{"id": 7, "title": "Legacy", "status": "open"}]))
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], 7)
+        self.assertEqual(tasks[0]["title"], "Legacy")
+
+    def test_first_write_migrates_legacy_tasks_before_appending(self):
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        legacy_file.write_text(json.dumps([{"id": 7, "title": "Legacy", "status": "open"}]))
+        task_tracker.cmd_add("New task")
+        tasks = task_tracker.load_tasks()
+        self.assertEqual([t["id"] for t in tasks], [7, 8])
+        self.assertEqual([t["title"] for t in tasks], ["Legacy", "New task"])
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
-        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
+        task_tracker.TASKS_FILE = Path("/tmp/test_tasks.jsonl")
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        if legacy_file.exists():
+            legacy_file.unlink()
 
     def tearDown(self):
         if task_tracker.TASKS_FILE.exists():
             task_tracker.TASKS_FILE.unlink()
+        legacy_file = task_tracker.TASKS_FILE.with_suffix(".json")
+        if legacy_file.exists():
+            legacy_file.unlink()
         html_file = Path("tasks.html")
         if html_file.exists():
             html_file.unlink()
