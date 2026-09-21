@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Task Tracker CLI — minimal task management via JSON storage."""
+"""Task Tracker CLI — minimal task management via append-only JSONL storage."""
 
 import datetime
 import html
 import json
+import os
 import sys
+import uuid
 from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
+TASKS_LOG_FILE = Path("tasks.jsonl")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -23,18 +26,79 @@ def parse_flag(args, flag):
     return value, remaining
 
 
-def load_tasks():
+def task_log_file():
+    if TASKS_FILE == Path("tasks.json"):
+        return TASKS_LOG_FILE
+    if TASKS_FILE.suffix == ".jsonl":
+        return TASKS_FILE
+    if not TASKS_FILE.suffix:
+        return TASKS_FILE.with_name(TASKS_FILE.name + ".jsonl")
+    return TASKS_FILE.with_suffix(TASKS_FILE.suffix + "l")
+
+
+def _load_legacy_tasks():
     if not TASKS_FILE.exists():
         return []
     return json.loads(TASKS_FILE.read_text())
 
 
+def _append_event(event):
+    encoded = json.dumps(event, separators=(",", ":")) + "\n"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    fd = os.open(task_log_file(), flags, 0o666)
+    try:
+        os.write(fd, encoded.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def _load_tasks_with_metadata():
+    tasks = _load_legacy_tasks()
+    next_task_id = max((t["id"] for t in tasks), default=0) + 1
+
+    log_file = task_log_file()
+    if not log_file.exists():
+        return tasks
+
+    for line in log_file.read_text().splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line)
+        op = event.get("op")
+        if op == "add":
+            task = {
+                "id": next_task_id,
+                "title": event["title"],
+                "status": "open",
+                "priority": event.get("priority", "medium"),
+                "due_date": event.get("due_date"),
+                "_event_id": event.get("event_id"),
+            }
+            tasks.append(task)
+            next_task_id += 1
+        elif op == "done":
+            for task in tasks:
+                if task["id"] == event.get("id"):
+                    task["status"] = "done"
+                    break
+        elif op == "delete":
+            tasks = [task for task in tasks if task["id"] != event.get("id")]
+
+    return tasks
+
+
+def load_tasks():
+    return [
+        {key: value for key, value in task.items() if not key.startswith("_")}
+        for task in _load_tasks_with_metadata()
+    ]
+
+
 def save_tasks(tasks):
     TASKS_FILE.write_text(json.dumps(tasks, indent=2))
-
-
-def next_id(tasks):
-    return max((t["id"] for t in tasks), default=0) + 1
+    log_file = task_log_file()
+    if log_file != TASKS_FILE and log_file.exists():
+        log_file.unlink()
 
 
 def cmd_add(title, priority="medium", due_date=None):
@@ -44,10 +108,17 @@ def cmd_add(title, priority="medium", due_date=None):
         except ValueError:
             print("Invalid due-date format. Use YYYY-MM-DD.")
             return
-    tasks = load_tasks()
-    task = {"id": next_id(tasks), "title": title, "status": "open", "priority": priority, "due_date": due_date}
-    tasks.append(task)
-    save_tasks(tasks)
+    event_id = uuid.uuid4().hex
+    _append_event(
+        {
+            "op": "add",
+            "event_id": event_id,
+            "title": title,
+            "priority": priority,
+            "due_date": due_date,
+        }
+    )
+    task = next(task for task in _load_tasks_with_metadata() if task.get("_event_id") == event_id)
     due_str = f" (due: {due_date})" if due_date else ""
     print(f"Added task #{task['id']}: {title} [{priority}]{due_str}")
 
@@ -74,8 +145,7 @@ def cmd_done(task_id):
     tasks = load_tasks()
     for t in tasks:
         if t["id"] == task_id:
-            t["status"] = "done"
-            save_tasks(tasks)
+            _append_event({"op": "done", "id": task_id})
             print(f"Marked #{task_id} as done.")
             return
     print(f"Task #{task_id} not found.")
@@ -83,12 +153,10 @@ def cmd_done(task_id):
 
 def cmd_delete(task_id):
     tasks = load_tasks()
-    before = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
-    if len(tasks) == before:
+    if not any(t["id"] == task_id for t in tasks):
         print(f"Task #{task_id} not found.")
         return
-    save_tasks(tasks)
+    _append_event({"op": "delete", "id": task_id})
     print(f"Deleted task #{task_id}.")
 
 
@@ -148,7 +216,10 @@ def main():
 
     if command == "add":
         if len(args) < 2:
-            print("Usage: task_tracker.py add <title> [--priority low|medium|high] [--due-date YYYY-MM-DD]")
+            print(
+                "Usage: task_tracker.py add <title> "
+                "[--priority low|medium|high] [--due-date YYYY-MM-DD]"
+            )
             sys.exit(1)
         add_args = args[1:]
         priority, add_args = parse_flag(add_args, "--priority")

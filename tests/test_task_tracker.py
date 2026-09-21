@@ -11,12 +11,15 @@ import task_tracker
 class TestTaskTracker(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.cleanup_task_files()
 
     def tearDown(self):
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.cleanup_task_files()
+
+    def cleanup_task_files(self):
+        for path in (task_tracker.TASKS_FILE, task_tracker.task_log_file()):
+            if path.exists():
+                path.unlink()
 
     def test_add_task(self):
         task_tracker.cmd_add("Do something")
@@ -167,19 +170,69 @@ class TestTaskTracker(unittest.TestCase):
         output = mock_print.call_args_list[0][0][0]
         self.assertNotIn("(due:", output)
 
+    def test_commands_use_jsonl_event_log(self):
+        task_tracker.cmd_add("Logged task", priority="high", due_date="2026-05-01")
+        task_tracker.cmd_done(1)
+        task_tracker.cmd_delete(1)
+
+        self.assertFalse(task_tracker.TASKS_FILE.exists())
+        events = [
+            json.loads(line)
+            for line in task_tracker.task_log_file().read_text().splitlines()
+        ]
+        self.assertEqual([event["op"] for event in events], ["add", "done", "delete"])
+        self.assertEqual(task_tracker.load_tasks(), [])
+
+    def test_legacy_json_tasks_are_replayed_before_jsonl_events(self):
+        task_tracker.save_tasks([{"id": 1, "title": "Old task", "status": "open"}])
+
+        task_tracker.cmd_add("New task")
+        task_tracker.cmd_done(1)
+
+        tasks = task_tracker.load_tasks()
+        self.assertEqual(tasks[0]["status"], "done")
+        self.assertEqual(tasks[1]["id"], 2)
+        self.assertEqual(tasks[1]["title"], "New task")
+
+    def test_replay_assigns_unique_ids_by_append_order(self):
+        first_event = {
+            "op": "add",
+            "event_id": "first",
+            "title": "First",
+            "priority": "medium",
+            "due_date": None,
+        }
+        second_event = {
+            "op": "add",
+            "event_id": "second",
+            "title": "Second",
+            "priority": "medium",
+            "due_date": None,
+        }
+
+        task_tracker._append_event(first_event)
+        task_tracker._append_event(second_event)
+
+        tasks = task_tracker.load_tasks()
+        self.assertEqual([task["id"] for task in tasks], [1, 2])
+        self.assertEqual([task["title"] for task in tasks], ["First", "Second"])
+
 
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.cleanup_task_files()
 
     def tearDown(self):
-        if task_tracker.TASKS_FILE.exists():
-            task_tracker.TASKS_FILE.unlink()
+        self.cleanup_task_files()
         html_file = Path("tasks.html")
         if html_file.exists():
             html_file.unlink()
+
+    def cleanup_task_files(self):
+        for path in (task_tracker.TASKS_FILE, task_tracker.task_log_file()):
+            if path.exists():
+                path.unlink()
 
     def test_publish_creates_html_file(self):
         task_tracker.cmd_add("Test task", priority="high")
@@ -223,7 +276,15 @@ class TestPublish(unittest.TestCase):
         self.assertLess(medium_pos, low_pos)
 
     def test_publish_includes_due_date(self):
-        tasks = [{"id": 1, "title": "Dated task", "status": "open", "priority": "high", "due_date": "2026-05-01"}]
+        tasks = [
+            {
+                "id": 1,
+                "title": "Dated task",
+                "status": "open",
+                "priority": "high",
+                "due_date": "2026-05-01",
+            }
+        ]
         task_tracker.save_tasks(tasks)
         task_tracker.cmd_publish()
         content = Path("tasks.html").read_text()
