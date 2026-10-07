@@ -78,6 +78,35 @@ class TestTaskTracker(unittest.TestCase):
         tasks = task_tracker.load_tasks()
         self.assertEqual(tasks[0]["priority"], "high")
 
+    def test_add_task_rejects_invalid_priority(self):
+        existing_tasks = [
+            {
+                "id": 1,
+                "title": "Existing task",
+                "status": "open",
+                "priority": "medium",
+                "due_date": None,
+            }
+        ]
+        task_tracker.save_tasks(existing_tasks)
+        before = task_tracker.TASKS_FILE.read_text()
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_add("Bad priority task", priority="urgent")
+        mock_print.assert_called_with("Invalid priority. Use low, medium or high.")
+        after = task_tracker.TASKS_FILE.read_text()
+        self.assertEqual(after, before)
+        self.assertEqual(task_tracker.load_tasks(), existing_tasks)
+
+    def test_add_task_accepts_valid_priorities(self):
+        for priority in ("low", "medium", "high"):
+            with self.subTest(priority=priority):
+                if task_tracker.TASKS_FILE.exists():
+                    task_tracker.TASKS_FILE.unlink()
+                task_tracker.cmd_add(f"{priority} task", priority=priority)
+                tasks = task_tracker.load_tasks()
+                self.assertEqual(len(tasks), 1)
+                self.assertEqual(tasks[0]["priority"], priority)
+
     def test_add_task_default_priority(self):
         task_tracker.cmd_add("Normal task")
         tasks = task_tracker.load_tasks()
