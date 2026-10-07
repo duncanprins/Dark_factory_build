@@ -9,6 +9,7 @@ from pathlib import Path
 
 TASKS_FILE = Path("tasks.json")
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+VALID_PRIORITIES = set(PRIORITY_RANK)
 
 
 def parse_flag(args, flag):
@@ -38,6 +39,9 @@ def next_id(tasks):
 
 
 def cmd_add(title, priority="medium", due_date=None):
+    if priority not in VALID_PRIORITIES:
+        print("Invalid priority. Use low, medium or high.")
+        return
     if due_date is not None:
         try:
             datetime.date.fromisoformat(due_date)
