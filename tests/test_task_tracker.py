@@ -168,6 +168,26 @@ class TestTaskTracker(unittest.TestCase):
         self.assertNotIn("(due:", output)
 
 
+    def test_total_command(self):
+        task_tracker.cmd_add("Task A")
+        task_tracker.cmd_add("Task B")
+        task_tracker.cmd_done(1)
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_total()
+        mock_print.assert_called_with("Total: 2 tasks")
+
+    def test_total_command_singular(self):
+        task_tracker.cmd_add("Only task")
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_total()
+        mock_print.assert_called_with("Total: 1 task")
+
+    def test_total_command_empty(self):
+        with patch("builtins.print") as mock_print:
+            task_tracker.cmd_total()
+        mock_print.assert_called_with("Total: 0 tasks")
+
+
 class TestPublish(unittest.TestCase):
     def setUp(self):
         task_tracker.TASKS_FILE = Path("/tmp/test_tasks.json")
